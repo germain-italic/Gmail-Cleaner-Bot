@@ -390,6 +390,18 @@ class GmailCleanerApp(App):
         background: $error;
     }
 
+    .dry-indicator {
+        dock: top;
+        height: 1;
+        background: $success;
+        color: $text;
+        text-align: center;
+    }
+
+    .dry-indicator.dry-on {
+        background: orange;
+        text-style: bold;
+    }
     """
 
     BINDINGS = [
@@ -410,13 +422,7 @@ class GmailCleanerApp(App):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Static("Connecting...", id="connection-status", classes="connection-status")
-
-        with Container(id="stats-container"):
-            with Horizontal():
-                yield Static("Rules: -", id="stat-rules", classes="stat-box")
-                yield Static("Active: -", id="stat-active", classes="stat-box")
-                yield Static("Actions: -", id="stat-actions", classes="stat-box")
-                yield Static("Success: -", id="stat-success", classes="stat-box")
+        yield Static("Mode: LIVE", id="dry-indicator", classes="dry-indicator")
 
         with TabbedContent():
             with TabPane("Rules", id="rules-tab"):
@@ -443,7 +449,6 @@ class GmailCleanerApp(App):
         self._refresh_stats()
         self._refresh_rules()
         self._refresh_logs()
-        self._update_dry_run_binding()
 
     def _init_tables(self) -> None:
         rules_table = self.query_one("#rules-table", DataTable)
@@ -477,11 +482,7 @@ class GmailCleanerApp(App):
             status.add_class("error")
 
     def _refresh_stats(self) -> None:
-        stats = self.db.get_stats()
-        self.query_one("#stat-rules", Static).update(f"Rules: {stats['total_rules']}")
-        self.query_one("#stat-active", Static).update(f"Active: {stats['active_rules']}")
-        self.query_one("#stat-actions", Static).update(f"Actions: {stats['total_actions']}")
-        self.query_one("#stat-success", Static).update(f"Success: {stats['successful_actions']}")
+        self._update_dry_indicator()
 
     def _refresh_rules(self) -> None:
         table = self.query_one("#rules-table", DataTable)
@@ -655,13 +656,18 @@ class GmailCleanerApp(App):
 
     def action_toggle_dry_run(self) -> None:
         self.dry_run = not self.dry_run
-        self._update_dry_run_binding()
+        self._update_dry_indicator()
         self.notify(f"Dry Run: {'ON' if self.dry_run else 'OFF'}")
 
-    def _update_dry_run_binding(self) -> None:
-        """Update the dry run binding text in footer."""
-        state = "ON" if self.dry_run else "OFF"
-        self._bindings.bind("d", "toggle_dry_run", f"Dry Run: {state}")
+    def _update_dry_indicator(self) -> None:
+        """Update the dry run indicator."""
+        indicator = self.query_one("#dry-indicator", Static)
+        if self.dry_run:
+            indicator.update("Mode: DRY RUN (no changes)")
+            indicator.add_class("dry-on")
+        else:
+            indicator.update("Mode: LIVE")
+            indicator.remove_class("dry-on")
 
     def _clear_old_logs(self) -> None:
         count = self.db.clear_old_logs(30)
