@@ -126,6 +126,9 @@ class RulesEngine:
             query_parts.append(f"from:{rule.value}")
         elif rule.field == RuleField.TO:
             query_parts.append(f"to:{rule.value}")
+        elif rule.field == RuleField.BODY:
+            # Gmail searches body content by default with plain text
+            query_parts.append(f'"{rule.value}"')
 
         query = " ".join(query_parts)
 
@@ -167,6 +170,9 @@ class RulesEngine:
             f"Rule '{rule.name}' complete: {stats['matched']} matched, "
             f"{stats['success']} success, {stats['failed']} failed"
         )
+
+        # Update last run timestamp
+        self.db.update_rule_last_run(rule.id)
 
         return stats
 

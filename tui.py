@@ -453,7 +453,7 @@ class GmailCleanerApp(App):
 
     def _init_tables(self) -> None:
         rules_table = self.query_one("#rules-table", DataTable)
-        rules_table.add_columns("ID", "Name", "Field", "Operator", "Value", "Action", "Days", "Status")
+        rules_table.add_columns("ID", "Name", "Field", "Operator", "Value", "Action", "Days", "Last Run", "Status")
         rules_table.cursor_type = "row"
 
         logs_table = self.query_one("#logs-table", DataTable)
@@ -491,6 +491,7 @@ class GmailCleanerApp(App):
 
         for rule in self.db.get_rules():
             status_text = Text("ON", style="green") if rule.enabled else Text("OFF", style="red")
+            last_run = rule.last_run_at.strftime("%m-%d %H:%M") if rule.last_run_at else "Never"
             table.add_row(
                 str(rule.id),
                 rule.name,
@@ -499,6 +500,7 @@ class GmailCleanerApp(App):
                 rule.value[:30] + "..." if len(rule.value) > 30 else rule.value,
                 rule.action.value,
                 str(rule.older_than_days),
+                last_run,
                 status_text,
             )
 
@@ -609,6 +611,7 @@ class GmailCleanerApp(App):
         log_screen = RunLogScreen()
 
         def handle_result(stats: dict) -> None:
+            self._refresh_rules()
             self._refresh_logs()
             self._refresh_stats()
 
@@ -647,6 +650,7 @@ class GmailCleanerApp(App):
         log_screen = RunLogScreen()
 
         def handle_result(stats: dict) -> None:
+            self._refresh_rules()
             self._refresh_logs()
             self._refresh_stats()
 

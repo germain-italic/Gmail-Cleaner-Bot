@@ -47,6 +47,7 @@ class Rule:
     enabled: bool
     created_at: datetime
     updated_at: datetime
+    last_run_at: Optional[datetime] = None
 
     @classmethod
     def from_row(cls, row: tuple) -> "Rule":
@@ -62,6 +63,7 @@ class Rule:
             enabled=bool(row[8]),
             created_at=datetime.fromisoformat(row[9]),
             updated_at=datetime.fromisoformat(row[10]),
+            last_run_at=datetime.fromisoformat(row[11]) if row[11] else None,
         )
 
 
@@ -106,7 +108,8 @@ CREATE TABLE IF NOT EXISTS rules (
     older_than_days INTEGER DEFAULT 0,
     enabled INTEGER DEFAULT 1,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    last_run_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS logs (
@@ -126,6 +129,10 @@ CREATE INDEX IF NOT EXISTS idx_logs_executed_at ON logs(executed_at);
 CREATE INDEX IF NOT EXISTS idx_logs_rule_id ON logs(rule_id);
 """
 
+MIGRATIONS = [
+    "ALTER TABLE rules ADD COLUMN last_run_at TEXT;",
+]
+
 
 class Database:
     def __init__(self, db_path: str = DATABASE_PATH):
@@ -136,6 +143,15 @@ class Database:
     def _init_db(self):
         with self._connect() as conn:
             conn.executescript(SCHEMA)
+            self._run_migrations(conn)
+
+    def _run_migrations(self, conn):
+        """Run migrations for existing databases."""
+        for migration in MIGRATIONS:
+            try:
+                conn.execute(migration)
+            except sqlite3.OperationalError:
+                pass  # Column already exists
 
     @contextmanager
     def _connect(self):
@@ -220,6 +236,14 @@ class Database:
         with self._connect() as conn:
             conn.execute(
                 "UPDATE rules SET enabled = NOT enabled, updated_at = ? WHERE id = ?",
+                (datetime.now().isoformat(), rule_id),
+            )
+            return True
+
+    def update_rule_last_run(self, rule_id: int) -> bool:
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE rules SET last_run_at = ? WHERE id = ?",
                 (datetime.now().isoformat(), rule_id),
             )
             return True
