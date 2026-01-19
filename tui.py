@@ -340,6 +340,12 @@ class GmailCleanerApp(App):
 
     TITLE = "Gmail Cleaner Bot"
     CSS = """
+    ToastRack {
+        dock: top;
+        align-horizontal: right;
+        margin-top: 3;
+    }
+
     #stats-container {
         height: 5;
         margin: 1;
