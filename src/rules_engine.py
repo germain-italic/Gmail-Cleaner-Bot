@@ -9,16 +9,12 @@ from .database import Database, Rule, LogEntry, RuleField, RuleOperator, RuleAct
 from .gmail_client import GmailClient, EmailMessage
 from .config import DRY_RUN, LOG_PATH, LOG_LEVEL
 
-# Setup logging
-logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL),
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(f"{LOG_PATH}/cleaner.log"),
-        logging.StreamHandler(),
-    ],
-)
+# Setup logging (file only, no stdout to avoid TUI conflicts)
 logger = logging.getLogger(__name__)
+logger.setLevel(getattr(logging, LOG_LEVEL))
+_handler = logging.FileHandler(f"{LOG_PATH}/cleaner.log")
+_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+logger.addHandler(_handler)
 
 
 class RulesEngine:
