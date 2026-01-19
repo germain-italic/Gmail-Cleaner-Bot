@@ -12,6 +12,7 @@ from src.config import validate_config, DRY_RUN
 from src.database import Database
 from src.gmail_client import GmailClient
 from src.rules_engine import RulesEngine
+from src.email_report import send_report
 
 
 def main():
@@ -62,6 +63,10 @@ def main():
     print(f"  Messages matched: {stats['matched']}")
     print(f"  Actions successful: {stats['success']}")
     print(f"  Actions failed: {stats['failed']}")
+
+    # Send email report
+    if send_report(stats):
+        print("  Email report sent")
 
 
 if __name__ == "__main__":

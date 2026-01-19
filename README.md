@@ -182,6 +182,27 @@ gmail-cleaner/
 | DRY_RUN | Mode simulation | false |
 | MAX_SEARCH_RESULTS | Messages max par règle | 500 |
 | PYTHON_PATH | Chemin vers Python | (auto-détecté) |
+| SMTP_ENABLED | Activer l'envoi de rapport par email | false |
+| SMTP_HOST | Serveur SMTP | (requis si SMTP_ENABLED) |
+| SMTP_PORT | Port SMTP | 587 |
+| SMTP_USER | Utilisateur SMTP | (requis si SMTP_ENABLED) |
+| SMTP_PASSWORD | Mot de passe SMTP | (requis si SMTP_ENABLED) |
+| SMTP_FROM | Adresse expéditeur | (requis si SMTP_ENABLED) |
+| SMTP_TO | Adresse destinataire | (requis si SMTP_ENABLED) |
+| SMTP_TLS | Utiliser STARTTLS | true |
+
+## Rapport par email
+
+Quand `SMTP_ENABLED=true`, un rapport est envoyé par email après chaque exécution du cron.
+
+**Contenu du rapport :**
+- Date et mode d'exécution (LIVE/DRY RUN)
+- Nombre de règles traitées
+- Messages trouvés, actions réussies/échouées
+
+**Exemple de sujet :**
+- `[Gmail Cleaner] Rapport du 2024-01-20 04:00 - Aucune action`
+- `[Gmail Cleaner] Rapport du 2024-01-20 04:00 - 2 erreur(s)`
 
 ## Rotation des logs
 

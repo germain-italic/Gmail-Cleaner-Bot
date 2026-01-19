@@ -29,6 +29,16 @@ DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 
 MAX_SEARCH_RESULTS = int(os.getenv("MAX_SEARCH_RESULTS", "500"))
 
+# SMTP settings for email reports
+SMTP_ENABLED = os.getenv("SMTP_ENABLED", "false").lower() == "true"
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM = os.getenv("SMTP_FROM", "")
+SMTP_TO = os.getenv("SMTP_TO", "")
+SMTP_TLS = os.getenv("SMTP_TLS", "true").lower() == "true"
+
 GMAIL_SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",
 ]
