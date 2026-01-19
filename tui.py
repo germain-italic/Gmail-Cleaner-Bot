@@ -393,14 +393,14 @@ class GmailCleanerApp(App):
     #dry-mode-indicator {
         dock: top;
         height: 1;
-        background: $warning;
+        background: $success-darken-2;
         color: $text;
         text-align: center;
-        display: none;
     }
 
     #dry-mode-indicator.active {
-        display: block;
+        background: $warning;
+        text-style: bold;
     }
     """
 
@@ -421,7 +421,7 @@ class GmailCleanerApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Static("DRY RUN MODE - No changes will be made", id="dry-mode-indicator")
+        yield Static("LIVE MODE - Changes will be applied", id="dry-mode-indicator")
         yield Static("Connecting...", id="connection-status", classes="connection-status")
 
         with Container(id="stats-container"):
@@ -497,8 +497,10 @@ class GmailCleanerApp(App):
         # Update dry mode indicator
         dry_indicator = self.query_one("#dry-mode-indicator", Static)
         if self.dry_run:
+            dry_indicator.update("DRY RUN MODE - No changes will be made")
             dry_indicator.add_class("active")
         else:
+            dry_indicator.update("LIVE MODE - Changes will be applied")
             dry_indicator.remove_class("active")
 
     def _refresh_rules(self) -> None:
