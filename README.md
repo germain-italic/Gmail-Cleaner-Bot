@@ -89,17 +89,32 @@ L'indicateur jaune "DRY MODE" s'affiche en haut quand le mode simulation est act
 ./manage.sh install
 ```
 
+### Déploiement serveur (prod)
+
+Sur le serveur de production, un alias est disponible :
+
+```bash
+cleangmail        # Lance la TUI
+cleangmail run    # Exécute toutes les règles
+cleangmail dry    # Dry-run (simulation)
+cleangmail test   # Test connexion Gmail
+```
+
+**Cron configuré :** tous les jours à 4h00
+
+**Fichiers :** `/var/www/vhosts/gmail-cleaner-bot.example.com/httpdocs/`
+
 ### Configuration Cron
 
 ```bash
 # Éditer le crontab
 crontab -e
 
-# Exécuter toutes les heures
-0 * * * * /chemin/vers/venv/bin/python /chemin/vers/cleaner.py >> /chemin/vers/logs/cron.log 2>&1
+# Exécuter tous les jours à 4h
+0 4 * * * /chemin/vers/manage.sh run >> /chemin/vers/logs/cron.log 2>&1
 
-# Ou toutes les 15 minutes
-*/15 * * * * /chemin/vers/venv/bin/python /chemin/vers/cleaner.py >> /chemin/vers/logs/cron.log 2>&1
+# Ou toutes les heures
+0 * * * * /chemin/vers/manage.sh run >> /chemin/vers/logs/cron.log 2>&1
 ```
 
 ### Cron sur WSL2
