@@ -476,6 +476,8 @@ class GmailCleanerApp(App):
         self._refresh_stats()
         self._refresh_rules()
         self._refresh_logs()
+        # Focus on rules table at startup
+        self.query_one("#rules-table", DataTable).focus()
 
     def _init_tables(self) -> None:
         rules_table = self.query_one("#rules-table", DataTable)
