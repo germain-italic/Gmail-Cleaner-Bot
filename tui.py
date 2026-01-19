@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Terminal User Interface for Gmail Cleaner Bot."""
+from __future__ import annotations
 
 import sys
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 
