@@ -98,9 +98,12 @@ class RuleFormScreen(ModalScreen[Rule | None]):
 
             with Horizontal(classes="form-row"):
                 yield Label("Operator:", classes="form-label")
+                # Exclude REGEX from dropdown (controlled by checkbox)
+                operators = [o for o in RuleOperator if o != RuleOperator.REGEX]
+                default_op = self.rule.operator if self.rule and self.rule.operator != RuleOperator.REGEX else RuleOperator.CONTAINS
                 yield Select(
-                    [(o.value.replace("_", " ").title(), o.value) for o in RuleOperator],
-                    value=self.rule.operator.value if self.rule else RuleOperator.CONTAINS.value,
+                    [(o.value.replace("_", " ").title(), o.value) for o in operators],
+                    value=default_op.value,
                     id="operator",
                     classes="form-input"
                 )
@@ -112,6 +115,13 @@ class RuleFormScreen(ModalScreen[Rule | None]):
                     placeholder="Value to match",
                     id="value",
                     classes="form-input"
+                )
+
+            with Horizontal(classes="form-row"):
+                yield Label("Regex:", classes="form-label")
+                yield Switch(
+                    value=self.rule.operator == RuleOperator.REGEX if self.rule else False,
+                    id="use_regex"
                 )
 
             with Horizontal(classes="form-row"):
@@ -174,11 +184,18 @@ class RuleFormScreen(ModalScreen[Rule | None]):
         except ValueError:
             older_than = 0
 
+        # Use REGEX operator if checkbox is checked
+        use_regex = self.query_one("#use_regex", Switch).value
+        if use_regex:
+            operator = RuleOperator.REGEX
+        else:
+            operator = RuleOperator(self.query_one("#operator", Select).value)
+
         rule = Rule(
             id=self.rule.id if self.rule else None,
             name=name,
             field=RuleField(self.query_one("#field", Select).value),
-            operator=RuleOperator(self.query_one("#operator", Select).value),
+            operator=operator,
             value=value,
             action=RuleAction(self.query_one("#action", Select).value),
             action_param=self.query_one("#action_param", Input).value.strip() or None,
