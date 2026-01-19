@@ -6,10 +6,12 @@ Bot automatisé pour nettoyer les emails Gmail selon des règles personnalisées
 
 - Suppression/archivage automatique des emails selon des règles
 - Filtrage par sujet, expéditeur, destinataire, contenu du body
-- Opérateurs: contient, contient (exact), égal, commence par, finit par, regex
+- Opérateurs: contient, contient (exact), égal, commence par, finit par
+- Support regex via checkbox dédiée
 - Condition d'âge (ex: emails de plus de 3 jours)
+- Pagination automatique (traite jusqu'à 500 messages par règle)
 - TUI (Terminal User Interface) pour gérer les règles
-- Modal d'exécution avec logs en temps réel
+- Modal d'exécution avec logs en temps réel (sujet, expéditeur, date)
 - Indicateur visuel du mode dry-run
 - Suivi de la dernière exécution de chaque règle
 - Logs de toutes les actions effectuées
@@ -118,8 +120,9 @@ command = service cron start
 - Garder un terminal WSL ouvert
 - Ou utiliser le Task Scheduler Windows pour lancer `wsl -e /chemin/vers/manage.sh run`
 
-## Exemple de règle
+## Exemples de règles
 
+### Règle simple
 Supprimer tous les messages de plus de 3 jours contenant "Host Up" dans le sujet:
 
 | Paramètre | Valeur |
@@ -130,6 +133,20 @@ Supprimer tous les messages de plus de 3 jours contenant "Host Up" dans le sujet
 | Value | Host Up |
 | Action | delete |
 | Older than days | 3 |
+
+### Règle avec regex
+Supprimer les notifications Plesk (toutes versions):
+
+| Paramètre | Valeur |
+|-----------|--------|
+| Name | Plesk Updates |
+| Field | subject |
+| Regex | ✓ (coché) |
+| Value | `Plesk .* Update is Live` |
+| Action | delete |
+| Older than days | 7 |
+
+**Note regex:** `.*` signifie "n'importe quels caractères". Le pattern ci-dessus matche "Plesk Obsidian 18.0.74 Update is Live".
 
 ## Structure du projet
 
