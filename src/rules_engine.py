@@ -143,7 +143,12 @@ class RulesEngine:
             # Gmail searches body content by default with plain text
             query_parts.append(f'"{rule.value}"')
         elif rule.field == RuleField.LABEL:
-            query_parts.append(f"label:{rule.value}")
+            # Quote label name if it contains spaces or special chars
+            label_value = rule.value
+            if " " in label_value or "-" in label_value:
+                query_parts.append(f'label:"{label_value}"')
+            else:
+                query_parts.append(f"label:{label_value}")
 
         query = " ".join(query_parts)
 
