@@ -132,39 +132,49 @@ class RulesEngine:
 
         query = " ".join(query_parts)
 
-        # Get messages
-        messages = self.gmail.search_messages(
-            query=query,
-            older_than_days=rule.older_than_days if rule.older_than_days > 0 else None
-        )
+        # Get messages with timeout handling
+        try:
+            messages = self.gmail.search_messages(
+                query=query,
+                older_than_days=rule.older_than_days if rule.older_than_days > 0 else None
+            )
+        except (TimeoutError, Exception) as e:
+            self._log(f"Error searching messages for rule '{rule.name}': {e}", "error")
+            return stats
 
         for message in messages:
             # Double-check with our matcher (Gmail search is approximate)
-            if not self.matches_rule(message, rule):
-                continue
+            try:
+                if not self.matches_rule(message, rule):
+                    continue
 
-            stats["matched"] += 1
-            success, error = self.execute_action(message, rule)
+                stats["matched"] += 1
+                success, error = self.execute_action(message, rule)
 
-            # Log the action
-            log_entry = LogEntry(
-                id=None,
-                rule_id=rule.id,
-                rule_name=rule.name,
-                message_id=message.id,
-                message_subject=message.subject[:200],
-                message_from=message.sender[:200],
-                action=rule.action,
-                success=success,
-                error_message=error,
-                executed_at=datetime.now(),
-            )
-            self.db.add_log(log_entry)
+                # Log the action
+                log_entry = LogEntry(
+                    id=None,
+                    rule_id=rule.id,
+                    rule_name=rule.name,
+                    message_id=message.id,
+                    message_subject=message.subject[:200],
+                    message_from=message.sender[:200],
+                    action=rule.action,
+                    success=success,
+                    error_message=error,
+                    executed_at=datetime.now(),
+                )
+                self.db.add_log(log_entry)
 
-            if success:
-                stats["success"] += 1
-            else:
+                if success:
+                    stats["success"] += 1
+                else:
+                    stats["failed"] += 1
+
+            except (TimeoutError, Exception) as e:
+                self._log(f"Error processing message: {e}", "error")
                 stats["failed"] += 1
+                continue
 
         self._log(
             f"Rule '{rule.name}' complete: {stats['matched']} matched, "
