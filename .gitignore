@@ -1,0 +1,38 @@
+# Environment and secrets
+.env
+credentials.json
+token.json
+*.key
+
+# Database
+*.sqlite
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+ENV/
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs (keep structure, ignore content)
+logs/*.log
+
+# OS
+.DS_Store
+Thumbs.db
