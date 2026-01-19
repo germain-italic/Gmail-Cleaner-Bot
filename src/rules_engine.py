@@ -100,8 +100,9 @@ class RulesEngine:
                 return False, f"Unknown action: {rule.action}"
 
             if success:
+                date_str = message.date.strftime("%Y-%m-%d")
                 self._log(
-                    f"Action '{rule.action.value}' on: [{message.subject}] from [{message.sender}]"
+                    f"Action '{rule.action.value}' on: [{message.subject}] from [{message.sender}] ({date_str})"
                 )
                 return True, None
             else:

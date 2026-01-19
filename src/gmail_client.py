@@ -11,7 +11,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from .config import GOOGLE_CREDENTIALS_PATH, GMAIL_USER_EMAIL, GMAIL_SCOPES
+from .config import GOOGLE_CREDENTIALS_PATH, GMAIL_USER_EMAIL, GMAIL_SCOPES, MAX_SEARCH_RESULTS
 
 
 @dataclass
@@ -82,7 +82,7 @@ class GmailClient:
     def search_messages(
         self,
         query: str = "",
-        max_results: int = 500,
+        max_results: int = MAX_SEARCH_RESULTS,
         older_than_days: Optional[int] = None,
         on_progress: Optional[callable] = None
     ) -> list[EmailMessage]:

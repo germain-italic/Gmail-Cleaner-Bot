@@ -159,3 +159,4 @@ gmail-cleaner/
 | LOG_PATH | Dossier des logs | ./logs |
 | LOG_LEVEL | Niveau de log | INFO |
 | DRY_RUN | Mode simulation | false |
+| MAX_SEARCH_RESULTS | Messages max par règle | 500 |

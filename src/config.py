@@ -25,6 +25,8 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 
+MAX_SEARCH_RESULTS = int(os.getenv("MAX_SEARCH_RESULTS", "500"))
+
 GMAIL_SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",
 ]
