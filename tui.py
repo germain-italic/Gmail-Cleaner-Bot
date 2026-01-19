@@ -8,6 +8,7 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent))
 
 from textual.app import App, ComposeResult
+from textual.worker import Worker
 from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
 from textual.widgets import (
     Header, Footer, Static, Button, DataTable, Input, Select, Switch, Label, TabbedContent, TabPane
@@ -611,12 +612,18 @@ class GmailCleanerApp(App):
             self._refresh_logs()
             self._refresh_stats()
 
-        def run_after_mount():
-            engine = RulesEngine(self.db, self.gmail, on_log=log_screen.add_log)
-            stats = engine.run_all_rules()
-            log_screen.finish(stats)
+        def run_in_thread():
+            def thread_safe_log(msg, level="info"):
+                self.call_from_thread(log_screen.add_log, msg, level)
 
-        log_screen.call_after_refresh(run_after_mount)
+            engine = RulesEngine(self.db, self.gmail, on_log=thread_safe_log)
+            stats = engine.run_all_rules()
+            self.call_from_thread(log_screen.finish, stats)
+
+        def start_worker():
+            self.run_worker(run_in_thread, thread=True)
+
+        log_screen.call_after_refresh(start_worker)
         self.push_screen(log_screen, handle_result)
 
     def action_run_selected_rule(self) -> None:
@@ -643,12 +650,18 @@ class GmailCleanerApp(App):
             self._refresh_logs()
             self._refresh_stats()
 
-        def run_after_mount():
-            engine = RulesEngine(self.db, self.gmail, on_log=log_screen.add_log)
-            stats = engine.process_rule(rule)
-            log_screen.finish(stats)
+        def run_in_thread():
+            def thread_safe_log(msg, level="info"):
+                self.call_from_thread(log_screen.add_log, msg, level)
 
-        log_screen.call_after_refresh(run_after_mount)
+            engine = RulesEngine(self.db, self.gmail, on_log=thread_safe_log)
+            stats = engine.process_rule(rule)
+            self.call_from_thread(log_screen.finish, stats)
+
+        def start_worker():
+            self.run_worker(run_in_thread, thread=True)
+
+        log_screen.call_after_refresh(start_worker)
         self.push_screen(log_screen, handle_result)
 
     def action_test_connection(self) -> None:
