@@ -323,15 +323,18 @@ class RunLogScreen(ModalScreen[dict]):
 
     def _update_display(self):
         log_text = self.query_one("#log-text", Static)
-        lines = []
-        for msg, level in self.logs:
+        # Build Rich Text object to avoid markup parsing issues
+        output = Text()
+        for i, (msg, level) in enumerate(self.logs):
+            if i > 0:
+                output.append("\n")
             if level == "error":
-                lines.append(f"[red]{msg}[/red]")
+                output.append(msg, style="red")
             elif "complete" in msg.lower() or "success" in msg.lower():
-                lines.append(f"[green]{msg}[/green]")
+                output.append(msg, style="green")
             else:
-                lines.append(msg)
-        log_text.update("\n".join(lines))
+                output.append(msg)
+        log_text.update(output)
         # Scroll to bottom
         container = self.query_one("#log-content", ScrollableContainer)
         container.scroll_end(animate=False)
