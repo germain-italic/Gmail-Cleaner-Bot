@@ -39,6 +39,9 @@ class RulesEngine:
 
     def _get_field_value(self, message: EmailMessage, field: RuleField) -> str:
         """Extract the field value from a message."""
+        if field == RuleField.LABEL:
+            # Return labels as comma-separated string for matching
+            return ",".join(message.labels)
         mapping = {
             RuleField.SUBJECT: message.subject,
             RuleField.FROM: message.sender,
@@ -76,6 +79,10 @@ class RulesEngine:
         # Check age requirement
         if rule.older_than_days > 0 and message.age_days < rule.older_than_days:
             return False
+
+        # For LABEL field, trust Gmail's query (label names vs IDs issue)
+        if rule.field == RuleField.LABEL:
+            return True
 
         # Check field match
         field_value = self._get_field_value(message, rule.field)
@@ -135,6 +142,8 @@ class RulesEngine:
         elif rule.field == RuleField.BODY:
             # Gmail searches body content by default with plain text
             query_parts.append(f'"{rule.value}"')
+        elif rule.field == RuleField.LABEL:
+            query_parts.append(f"label:{rule.value}")
 
         query = " ".join(query_parts)
 

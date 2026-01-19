@@ -23,6 +23,7 @@ class RuleField(Enum):
     FROM = "from"
     TO = "to"
     BODY = "body"
+    LABEL = "label"
 
 
 class RuleOperator(Enum):

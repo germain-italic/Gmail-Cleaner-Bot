@@ -5,7 +5,7 @@ Bot automatisé pour nettoyer les emails Gmail selon des règles personnalisées
 ## Fonctionnalités
 
 - Suppression/archivage automatique des emails selon des règles
-- Filtrage par sujet, expéditeur, destinataire, contenu du body
+- Filtrage par sujet, expéditeur, destinataire, contenu du body, **label**
 - Opérateurs: contient, contient (exact), égal, commence par, finit par
 - Support regex via checkbox dédiée
 - Condition d'âge (ex: emails de plus de 3 jours)
@@ -149,6 +149,20 @@ Supprimer les notifications Plesk (toutes versions):
 | Older than days | 7 |
 
 **Note regex:** `.*` signifie "n'importe quels caractères". Le pattern ci-dessus matche "Plesk Obsidian 18.0.74 Update is Live".
+
+### Règle par label
+Supprimer tous les messages avec le label "Notifications" de plus de 30 jours:
+
+| Paramètre | Valeur |
+|-----------|--------|
+| Name | Cleanup old notifications |
+| Field | label |
+| Operator | equals |
+| Value | Notifications |
+| Action | delete |
+| Older than days | 30 |
+
+**Note:** Utiliser le nom exact du label tel qu'il apparaît dans Gmail.
 
 ## Structure du projet
 
