@@ -462,6 +462,7 @@ class GmailCleanerApp(App):
         self.gmail = None
         self.dry_run = DRY_RUN
         self.filter_text = ""
+        self.filter_mode = False
         self.all_rules: list[Rule] = []
 
     def compose(self) -> ComposeResult:
@@ -757,17 +758,19 @@ class GmailCleanerApp(App):
     def _update_filter_bar(self) -> None:
         """Update the filter bar display."""
         filter_bar = self.query_one("#filter-bar", Static)
-        if self.filter_text:
-            filter_bar.update(f"Filter: {self.filter_text}_ (Esc to clear)")
+        if self.filter_mode or self.filter_text:
+            text = self.filter_text if self.filter_text else ""
+            filter_bar.update(f"/{text}_ (Enter to confirm, Esc to clear)")
             filter_bar.add_class("active")
         else:
             filter_bar.update("")
             filter_bar.remove_class("active")
 
     def action_clear_filter(self) -> None:
-        """Clear the filter text."""
-        if self.filter_text:
+        """Clear the filter text and exit filter mode."""
+        if self.filter_mode or self.filter_text:
             self.filter_text = ""
+            self.filter_mode = False
             self._update_filter_bar()
             self._refresh_rules(keep_filter=True)
 
@@ -778,20 +781,35 @@ class GmailCleanerApp(App):
         if not rules_table.has_focus:
             return
 
+        # "/" enters filter mode
+        if event.character == "/" and not self.filter_mode:
+            self.filter_mode = True
+            self._update_filter_bar()
+            event.prevent_default()
+            return
+
+        # Only process keys in filter mode
+        if not self.filter_mode:
+            return
+
+        # Enter confirms filter and exits filter mode
+        if event.key == "enter":
+            self.filter_mode = False
+            self._update_filter_bar()
+            event.prevent_default()
+            return
+
         # Handle backspace
         if event.key == "backspace":
             if self.filter_text:
                 self.filter_text = self.filter_text[:-1]
                 self._update_filter_bar()
                 self._refresh_rules(keep_filter=True)
-                event.prevent_default()
+            event.prevent_default()
             return
 
-        # Handle printable characters (excluding special keys and shortcuts)
+        # Handle printable characters
         if event.is_printable and event.character:
-            # Skip if it's a bound key without filter active
-            if not self.filter_text and event.character in "qnasstd":
-                return
             self.filter_text += event.character
             self._update_filter_bar()
             self._refresh_rules(keep_filter=True)
