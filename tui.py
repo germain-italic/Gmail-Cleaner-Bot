@@ -453,6 +453,7 @@ class GmailCleanerApp(App):
         Binding("s", "run_selected_rule", "Run Selected"),
         Binding("t", "test_connection", "Test Connection"),
         Binding("d", "toggle_dry_run", "Toggle Dry Run"),
+        Binding("slash", "start_filter", "/Filter"),
         Binding("escape", "clear_filter", "Clear Filter", show=False),
     ]
 
@@ -774,18 +775,18 @@ class GmailCleanerApp(App):
             self._update_filter_bar()
             self._refresh_rules(keep_filter=True)
 
+    def action_start_filter(self) -> None:
+        """Enter filter mode."""
+        rules_table = self.query_one("#rules-table", DataTable)
+        if rules_table.has_focus and not self.filter_mode:
+            self.filter_mode = True
+            self._update_filter_bar()
+
     def on_key(self, event) -> None:
         """Handle key presses for live filtering."""
         # Only filter when rules table is focused
         rules_table = self.query_one("#rules-table", DataTable)
         if not rules_table.has_focus:
-            return
-
-        # "/" enters filter mode
-        if event.character == "/" and not self.filter_mode:
-            self.filter_mode = True
-            self._update_filter_bar()
-            event.prevent_default()
             return
 
         # Only process keys in filter mode

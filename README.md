@@ -62,6 +62,7 @@ pip install -r requirements.txt
 ```
 
 Raccourcis clavier:
+- `/` - Filtrer les règles (vim-like: taper le texte, Enter pour confirmer, Escape pour effacer)
 - `n` - Nouvelle règle
 - `a` - Exécuter toutes les règles actives
 - `s` - Exécuter la règle sélectionnée
@@ -177,3 +178,4 @@ gmail-cleaner/
 | LOG_LEVEL | Niveau de log | INFO |
 | DRY_RUN | Mode simulation | false |
 | MAX_SEARCH_RESULTS | Messages max par règle | 500 |
+| PYTHON_PATH | Chemin vers Python | (auto-détecté) |
