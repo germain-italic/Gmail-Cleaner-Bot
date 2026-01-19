@@ -191,7 +191,7 @@ class Database:
         query = "SELECT * FROM rules"
         if enabled_only:
             query += " WHERE enabled = 1"
-        query += " ORDER BY name"
+        query += " ORDER BY name COLLATE NOCASE"
 
         with self._connect() as conn:
             cursor = conn.execute(query)
