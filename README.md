@@ -193,7 +193,15 @@ gmail-cleaner/
 
 ## Rapport par email
 
-Quand `SMTP_ENABLED=true`, un rapport est envoyé par email après chaque exécution du cron.
+Quand `SMTP_ENABLED=true`, un rapport est envoyé par email après l'exécution via `cleaner.py`.
+
+**Quand le rapport est envoyé :**
+| Commande | Email envoyé |
+|----------|--------------|
+| `manage.sh run` | ✅ Oui |
+| `manage.sh dry` | ✅ Oui |
+| Cron | ✅ Oui |
+| TUI (Run All / Run Selected) | ❌ Non |
 
 **Contenu du rapport :**
 - Date et mode d'exécution (LIVE/DRY RUN)
