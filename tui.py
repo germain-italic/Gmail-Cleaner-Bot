@@ -311,12 +311,14 @@ class RunLogScreen(ModalScreen[dict]):
         self.logs: list[tuple[str, str]] = []
         self.stats: dict = {}
         self.running = True
+        self.cancelled = False
 
     def compose(self) -> ComposeResult:
         with Container(id="log-container"):
             yield Static("Execution Log", id="log-title")
             yield ScrollableContainer(Static("", id="log-text"), id="log-content")
             with Horizontal(id="log-buttons"):
+                yield Button("Cancel", variant="error", id="cancel")
                 yield Button("Close", variant="primary", id="close", disabled=True)
 
     def add_log(self, message: str, level: str = "info"):
@@ -344,12 +346,24 @@ class RunLogScreen(ModalScreen[dict]):
     def finish(self, stats: dict):
         self.stats = stats
         self.running = False
+        self.query_one("#cancel", Button).disabled = True
         self.query_one("#close", Button).disabled = False
-        self.add_log("", "info")
-        self.add_log("--- Execution finished. Press Close or Escape ---", "info")
+        if self.cancelled:
+            self.add_log("", "info")
+            self.add_log("--- Execution cancelled ---", "error")
+        else:
+            self.add_log("", "info")
+            self.add_log("--- Execution finished. Press Close or Escape ---", "info")
+
+    def is_cancelled(self) -> bool:
+        return self.cancelled
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "close":
+        if event.button.id == "cancel" and self.running:
+            self.cancelled = True
+            self.add_log("Cancelling... (waiting for current action to complete)", "error")
+            self.query_one("#cancel", Button).disabled = True
+        elif event.button.id == "close":
             self.dismiss(self.stats)
 
     def action_close(self) -> None:
@@ -683,7 +697,7 @@ class GmailCleanerApp(App):
             def thread_safe_log(msg, level="info"):
                 self.call_from_thread(log_screen.add_log, msg, level)
 
-            engine = RulesEngine(self.db, self.gmail, on_log=thread_safe_log)
+            engine = RulesEngine(self.db, self.gmail, on_log=thread_safe_log, is_cancelled=log_screen.is_cancelled)
             stats = engine.run_all_rules()
             self.call_from_thread(log_screen.finish, stats)
 
@@ -722,7 +736,7 @@ class GmailCleanerApp(App):
             def thread_safe_log(msg, level="info"):
                 self.call_from_thread(log_screen.add_log, msg, level)
 
-            engine = RulesEngine(self.db, self.gmail, on_log=thread_safe_log)
+            engine = RulesEngine(self.db, self.gmail, on_log=thread_safe_log, is_cancelled=log_screen.is_cancelled)
             stats = engine.process_rule(rule)
             self.call_from_thread(log_screen.finish, stats)
 

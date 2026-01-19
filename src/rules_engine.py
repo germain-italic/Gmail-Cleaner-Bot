@@ -23,10 +23,11 @@ logger.addHandler(_handler)
 
 
 class RulesEngine:
-    def __init__(self, db: Database, gmail: GmailClient, on_log: Optional[callable] = None):
+    def __init__(self, db: Database, gmail: GmailClient, on_log: Optional[callable] = None, is_cancelled: Optional[callable] = None):
         self.db = db
         self.gmail = gmail
         self.on_log = on_log
+        self.is_cancelled = is_cancelled
 
     def _log(self, message: str, level: str = "info"):
         """Log message to file and optional callback."""
@@ -163,6 +164,11 @@ class RulesEngine:
             return stats
 
         for message in messages:
+            # Check for cancellation
+            if self.is_cancelled and self.is_cancelled():
+                self._log("Cancelled by user", "error")
+                break
+
             # Double-check with our matcher (Gmail search is approximate)
             try:
                 if not self.matches_rule(message, rule):
@@ -214,6 +220,11 @@ class RulesEngine:
         self._log(f"Starting cleanup with {len(rules)} active rules")
 
         for rule in rules:
+            # Check for cancellation between rules
+            if self.is_cancelled and self.is_cancelled():
+                self._log("Cancelled by user", "error")
+                break
+
             stats = self.process_rule(rule)
             total_stats["rules_processed"] += 1
             total_stats["matched"] += stats["matched"]
