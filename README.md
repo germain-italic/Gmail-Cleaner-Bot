@@ -176,6 +176,8 @@ gmail-cleaner/
 | DATABASE_PATH | Chemin base SQLite | ./data/gmail_cleaner.db |
 | LOG_PATH | Dossier des logs | ./logs |
 | LOG_LEVEL | Niveau de log | INFO |
+| LOG_MAX_SIZE | Taille max du log avant rotation (octets) | 5242880 (5 MB) |
+| LOG_BACKUP_COUNT | Nombre de fichiers de backup | 3 |
 | DRY_RUN | Mode simulation | false |
 | MAX_SEARCH_RESULTS | Messages max par règle | 500 |
 | PYTHON_PATH | Chemin vers Python | (auto-détecté) |

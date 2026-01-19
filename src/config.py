@@ -22,6 +22,8 @@ DATABASE_PATH = os.getenv(
 
 LOG_PATH = os.getenv("LOG_PATH", str(BASE_DIR / "logs"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_MAX_SIZE = int(os.getenv("LOG_MAX_SIZE", str(5 * 1024 * 1024)))  # 5 MB default
+LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "3"))
 
 DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 

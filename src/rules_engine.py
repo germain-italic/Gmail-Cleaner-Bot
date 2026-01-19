@@ -2,17 +2,22 @@
 
 import re
 import logging
+from logging.handlers import RotatingFileHandler
 from datetime import datetime
 from typing import Optional
 
 from .database import Database, Rule, LogEntry, RuleField, RuleOperator, RuleAction
 from .gmail_client import GmailClient, EmailMessage
-from .config import DRY_RUN, LOG_PATH, LOG_LEVEL
+from .config import DRY_RUN, LOG_PATH, LOG_LEVEL, LOG_MAX_SIZE, LOG_BACKUP_COUNT
 
-# Setup logging (file only, no stdout to avoid TUI conflicts)
+# Setup logging with rotation (file only, no stdout to avoid TUI conflicts)
 logger = logging.getLogger(__name__)
 logger.setLevel(getattr(logging, LOG_LEVEL))
-_handler = logging.FileHandler(f"{LOG_PATH}/cleaner.log")
+_handler = RotatingFileHandler(
+    f"{LOG_PATH}/cleaner.log",
+    maxBytes=LOG_MAX_SIZE,
+    backupCount=LOG_BACKUP_COUNT
+)
 _handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 logger.addHandler(_handler)
 
