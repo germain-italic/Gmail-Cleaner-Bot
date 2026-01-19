@@ -5,14 +5,28 @@ Bot automatisé pour nettoyer les emails Gmail selon des règles personnalisées
 ## Fonctionnalités
 
 - Suppression/archivage automatique des emails selon des règles
-- Filtrage par sujet, expéditeur, destinataire, contenu
-- Opérateurs: contient, égal, commence par, finit par, regex
+- Filtrage par sujet, expéditeur, destinataire, contenu du body
+- Opérateurs: contient, contient (exact), égal, commence par, finit par, regex
 - Condition d'âge (ex: emails de plus de 3 jours)
 - TUI (Terminal User Interface) pour gérer les règles
+- Modal d'exécution avec logs en temps réel
+- Indicateur visuel du mode dry-run
+- Suivi de la dernière exécution de chaque règle
 - Logs de toutes les actions effectuées
 - Mode dry-run pour tester sans modifier
 
 ## Installation
+
+```bash
+# Configurer l'environnement
+cp .env.example .env
+# Éditer .env avec vos paramètres
+
+# Lancer (le venv sera créé automatiquement)
+./manage.sh
+```
+
+Ou manuellement:
 
 ```bash
 # Créer un environnement virtuel
@@ -21,10 +35,6 @@ source venv/bin/activate
 
 # Installer les dépendances
 pip install -r requirements.txt
-
-# Configurer l'environnement
-cp .env.example .env
-# Éditer .env avec vos paramètres
 ```
 
 ## Configuration Google Workspace
@@ -36,38 +46,43 @@ cp .env.example .env
 5. Dans [Google Admin Console](https://admin.google.com/):
    - Security > API Controls > Domain-wide Delegation
    - Ajouter le Client ID du Service Account
-   - Scopes requis:
+   - Scope requis:
      - `https://www.googleapis.com/auth/gmail.modify`
-     - `https://www.googleapis.com/auth/gmail.readonly`
 
 ## Utilisation
 
 ### Interface TUI
 
 ```bash
-./tui.py
+./manage.sh
 # ou
-python tui.py
+./manage.sh tui
 ```
 
 Raccourcis clavier:
 - `n` - Nouvelle règle
-- `r` - Exécuter les règles maintenant
-- `t` - Tester la connexion
+- `a` - Exécuter toutes les règles actives
+- `s` - Exécuter la règle sélectionnée
+- `t` - Tester la connexion Gmail
 - `d` - Activer/désactiver le mode dry-run
 - `q` - Quitter
+
+L'indicateur jaune "DRY MODE" s'affiche en haut quand le mode simulation est actif.
 
 ### Script en ligne de commande
 
 ```bash
 # Exécuter le nettoyage
-./cleaner.py
+./manage.sh run
 
 # Mode dry-run (ne fait aucune modification)
-./cleaner.py --dry-run
+./manage.sh dry
 
 # Tester la connexion
-./cleaner.py --test
+./manage.sh test
+
+# Installer/mettre à jour les dépendances
+./manage.sh install
 ```
 
 ### Configuration Cron
@@ -100,6 +115,7 @@ Supprimer tous les messages de plus de 3 jours contenant "Host Up" dans le sujet
 
 ```
 gmail-cleaner/
+├── manage.sh           # Script de gestion (point d'entrée)
 ├── cleaner.py          # Script principal (cron)
 ├── tui.py              # Interface terminal
 ├── src/
