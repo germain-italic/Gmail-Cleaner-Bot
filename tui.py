@@ -390,18 +390,6 @@ class GmailCleanerApp(App):
         background: $error;
     }
 
-    #dry-mode-indicator {
-        dock: top;
-        height: 1;
-        background: $success-darken-2;
-        color: $text;
-        text-align: center;
-    }
-
-    #dry-mode-indicator.active {
-        background: $warning;
-        text-style: bold;
-    }
     """
 
     BINDINGS = [
@@ -421,7 +409,6 @@ class GmailCleanerApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Static("LIVE MODE - Changes will be applied", id="dry-mode-indicator")
         yield Static("Connecting...", id="connection-status", classes="connection-status")
 
         with Container(id="stats-container"):
@@ -456,6 +443,7 @@ class GmailCleanerApp(App):
         self._refresh_stats()
         self._refresh_rules()
         self._refresh_logs()
+        self._update_dry_run_binding()
 
     def _init_tables(self) -> None:
         rules_table = self.query_one("#rules-table", DataTable)
@@ -494,14 +482,6 @@ class GmailCleanerApp(App):
         self.query_one("#stat-active", Static).update(f"Active: {stats['active_rules']}")
         self.query_one("#stat-actions", Static).update(f"Actions: {stats['total_actions']}")
         self.query_one("#stat-success", Static).update(f"Success: {stats['successful_actions']}")
-        # Update dry mode indicator
-        dry_indicator = self.query_one("#dry-mode-indicator", Static)
-        if self.dry_run:
-            dry_indicator.update("DRY RUN MODE - No changes will be made")
-            dry_indicator.add_class("active")
-        else:
-            dry_indicator.update("LIVE MODE - Changes will be applied")
-            dry_indicator.remove_class("active")
 
     def _refresh_rules(self) -> None:
         table = self.query_one("#rules-table", DataTable)
@@ -675,8 +655,13 @@ class GmailCleanerApp(App):
 
     def action_toggle_dry_run(self) -> None:
         self.dry_run = not self.dry_run
-        self._refresh_stats()
+        self._update_dry_run_binding()
         self.notify(f"Dry Run: {'ON' if self.dry_run else 'OFF'}")
+
+    def _update_dry_run_binding(self) -> None:
+        """Update the dry run binding text in footer."""
+        state = "ON" if self.dry_run else "OFF"
+        self._bindings.bind("d", "toggle_dry_run", f"Dry Run: {state}")
 
     def _clear_old_logs(self) -> None:
         count = self.db.clear_old_logs(30)
