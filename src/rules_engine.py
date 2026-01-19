@@ -18,9 +18,19 @@ logger.addHandler(_handler)
 
 
 class RulesEngine:
-    def __init__(self, db: Database, gmail: GmailClient):
+    def __init__(self, db: Database, gmail: GmailClient, on_log: Optional[callable] = None):
         self.db = db
         self.gmail = gmail
+        self.on_log = on_log
+
+    def _log(self, message: str, level: str = "info"):
+        """Log message to file and optional callback."""
+        if level == "error":
+            logger.error(message)
+        else:
+            logger.info(message)
+        if self.on_log:
+            self.on_log(message, level)
 
     def _get_field_value(self, message: EmailMessage, field: RuleField) -> str:
         """Extract the field value from a message."""
@@ -69,7 +79,7 @@ class RulesEngine:
     def execute_action(self, message: EmailMessage, rule: Rule) -> tuple[bool, Optional[str]]:
         """Execute the rule action on a message."""
         if DRY_RUN:
-            logger.info(f"[DRY RUN] Would {rule.action.value} message: {message.subject}")
+            self._log(f"[DRY RUN] Would {rule.action.value} message: {message.subject}")
             return True, None
 
         try:
@@ -90,9 +100,8 @@ class RulesEngine:
                 return False, f"Unknown action: {rule.action}"
 
             if success:
-                logger.info(
-                    f"Action '{rule.action.value}' executed on message: "
-                    f"[{message.subject}] from [{message.sender}]"
+                self._log(
+                    f"Action '{rule.action.value}' on: [{message.subject}] from [{message.sender}]"
                 )
                 return True, None
             else:
@@ -100,14 +109,14 @@ class RulesEngine:
 
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"Error executing action: {error_msg}")
+            self._log(f"Error executing action: {error_msg}", "error")
             return False, error_msg
 
     def process_rule(self, rule: Rule) -> dict:
         """Process a single rule against all matching messages."""
         stats = {"matched": 0, "success": 0, "failed": 0}
 
-        logger.info(f"Processing rule: {rule.name}")
+        self._log(f"Processing rule: {rule.name}")
 
         # Build search query based on rule field
         query_parts = []
@@ -154,7 +163,7 @@ class RulesEngine:
             else:
                 stats["failed"] += 1
 
-        logger.info(
+        self._log(
             f"Rule '{rule.name}' complete: {stats['matched']} matched, "
             f"{stats['success']} success, {stats['failed']} failed"
         )
@@ -166,7 +175,7 @@ class RulesEngine:
         rules = self.db.get_rules(enabled_only=True)
         total_stats = {"rules_processed": 0, "matched": 0, "success": 0, "failed": 0}
 
-        logger.info(f"Starting cleanup with {len(rules)} active rules")
+        self._log(f"Starting cleanup with {len(rules)} active rules")
 
         for rule in rules:
             stats = self.process_rule(rule)
@@ -175,7 +184,7 @@ class RulesEngine:
             total_stats["success"] += stats["success"]
             total_stats["failed"] += stats["failed"]
 
-        logger.info(
+        self._log(
             f"Cleanup complete: {total_stats['rules_processed']} rules, "
             f"{total_stats['matched']} messages matched, "
             f"{total_stats['success']} actions successful"

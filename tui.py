@@ -231,6 +231,109 @@ class ConfirmScreen(ModalScreen[bool]):
         self.dismiss(event.button.id == "yes")
 
 
+class RunLogScreen(ModalScreen[dict]):
+    """Modal screen showing execution logs."""
+
+    BINDINGS = [
+        Binding("escape", "close", "Close"),
+    ]
+
+    CSS = """
+    RunLogScreen {
+        align: center middle;
+    }
+
+    #log-container {
+        width: 90%;
+        height: 80%;
+        background: $surface;
+        border: thick $primary;
+        padding: 1;
+    }
+
+    #log-title {
+        dock: top;
+        height: 1;
+        background: $primary;
+        color: $text;
+        text-align: center;
+        padding: 0 1;
+    }
+
+    #log-content {
+        height: 1fr;
+        margin: 1 0;
+        background: $background;
+        padding: 1;
+    }
+
+    #log-buttons {
+        dock: bottom;
+        height: 3;
+        align: center middle;
+    }
+
+    .log-info {
+        color: $text;
+    }
+
+    .log-error {
+        color: $error;
+    }
+
+    .log-success {
+        color: $success;
+    }
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.logs: list[tuple[str, str]] = []
+        self.stats: dict = {}
+        self.running = True
+
+    def compose(self) -> ComposeResult:
+        with Container(id="log-container"):
+            yield Static("Execution Log", id="log-title")
+            yield ScrollableContainer(Static("", id="log-text"), id="log-content")
+            with Horizontal(id="log-buttons"):
+                yield Button("Close", variant="primary", id="close", disabled=True)
+
+    def add_log(self, message: str, level: str = "info"):
+        self.logs.append((message, level))
+        self._update_display()
+
+    def _update_display(self):
+        log_text = self.query_one("#log-text", Static)
+        lines = []
+        for msg, level in self.logs:
+            if level == "error":
+                lines.append(f"[red]{msg}[/red]")
+            elif "complete" in msg.lower() or "success" in msg.lower():
+                lines.append(f"[green]{msg}[/green]")
+            else:
+                lines.append(msg)
+        log_text.update("\n".join(lines))
+        # Scroll to bottom
+        container = self.query_one("#log-content", ScrollableContainer)
+        container.scroll_end(animate=False)
+
+    def finish(self, stats: dict):
+        self.stats = stats
+        self.running = False
+        self.query_one("#close", Button).disabled = False
+        self.add_log("", "info")
+        self.add_log("--- Execution finished. Press Close or Escape ---", "info")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "close":
+            self.dismiss(self.stats)
+
+    def action_close(self) -> None:
+        if not self.running:
+            self.dismiss(self.stats)
+
+
 class GmailCleanerApp(App):
     """Main TUI Application."""
 
@@ -286,6 +389,19 @@ class GmailCleanerApp(App):
     .connection-status.error {
         background: $error;
     }
+
+    #dry-mode-indicator {
+        dock: top;
+        height: 1;
+        background: $warning;
+        color: $text;
+        text-align: center;
+        display: none;
+    }
+
+    #dry-mode-indicator.active {
+        display: block;
+    }
     """
 
     BINDINGS = [
@@ -305,6 +421,7 @@ class GmailCleanerApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
+        yield Static("DRY RUN MODE - No changes will be made", id="dry-mode-indicator")
         yield Static("Connecting...", id="connection-status", classes="connection-status")
 
         with Container(id="stats-container"):
@@ -313,7 +430,6 @@ class GmailCleanerApp(App):
                 yield Static("Active: -", id="stat-active", classes="stat-box")
                 yield Static("Actions: -", id="stat-actions", classes="stat-box")
                 yield Static("Success: -", id="stat-success", classes="stat-box")
-                yield Static(f"Dry Run: {'ON' if self.dry_run else 'OFF'}", id="stat-dry", classes="stat-box")
 
         with TabbedContent():
             with TabPane("Rules", id="rules-tab"):
@@ -378,7 +494,12 @@ class GmailCleanerApp(App):
         self.query_one("#stat-active", Static).update(f"Active: {stats['active_rules']}")
         self.query_one("#stat-actions", Static).update(f"Actions: {stats['total_actions']}")
         self.query_one("#stat-success", Static).update(f"Success: {stats['successful_actions']}")
-        self.query_one("#stat-dry", Static).update(f"Dry Run: {'ON' if self.dry_run else 'OFF'}")
+        # Update dry mode indicator
+        dry_indicator = self.query_one("#dry-mode-indicator", Static)
+        if self.dry_run:
+            dry_indicator.add_class("active")
+        else:
+            dry_indicator.remove_class("active")
 
     def _refresh_rules(self) -> None:
         table = self.query_one("#rules-table", DataTable)
@@ -498,20 +619,22 @@ class GmailCleanerApp(App):
             self.notify("Not connected to Gmail", severity="error")
             return
 
-        self.notify("Running all rules...")
-
         import src.config
         src.config.DRY_RUN = self.dry_run
 
-        engine = RulesEngine(self.db, self.gmail)
-        stats = engine.run_all_rules()
+        log_screen = RunLogScreen()
 
-        self._refresh_logs()
-        self._refresh_stats()
+        def handle_result(stats: dict) -> None:
+            self._refresh_logs()
+            self._refresh_stats()
 
-        self.notify(
-            f"Done: {stats['matched']} matched, {stats['success']} success, {stats['failed']} failed"
-        )
+        def run_after_mount():
+            engine = RulesEngine(self.db, self.gmail, on_log=log_screen.add_log)
+            stats = engine.run_all_rules()
+            log_screen.finish(stats)
+
+        log_screen.call_after_refresh(run_after_mount)
+        self.push_screen(log_screen, handle_result)
 
     def action_run_selected_rule(self) -> None:
         if not self.gmail:
@@ -528,20 +651,22 @@ class GmailCleanerApp(App):
             self.notify("Rule not found", severity="error")
             return
 
-        self.notify(f"Running rule: {rule.name}...")
-
         import src.config
         src.config.DRY_RUN = self.dry_run
 
-        engine = RulesEngine(self.db, self.gmail)
-        stats = engine.process_rule(rule)
+        log_screen = RunLogScreen()
 
-        self._refresh_logs()
-        self._refresh_stats()
+        def handle_result(stats: dict) -> None:
+            self._refresh_logs()
+            self._refresh_stats()
 
-        self.notify(
-            f"Done: {stats['matched']} matched, {stats['success']} success, {stats['failed']} failed"
-        )
+        def run_after_mount():
+            engine = RulesEngine(self.db, self.gmail, on_log=log_screen.add_log)
+            stats = engine.process_rule(rule)
+            log_screen.finish(stats)
+
+        log_screen.call_after_refresh(run_after_mount)
+        self.push_screen(log_screen, handle_result)
 
     def action_test_connection(self) -> None:
         self._test_connection()
