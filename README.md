@@ -98,6 +98,26 @@ crontab -e
 */15 * * * * /chemin/vers/venv/bin/python /chemin/vers/cleaner.py >> /chemin/vers/logs/cron.log 2>&1
 ```
 
+### Cron sur WSL2
+
+Cron ne démarre pas automatiquement sur WSL2. Pour l'activer:
+
+```bash
+# Vérifier/démarrer cron
+sudo service cron status
+sudo service cron start
+```
+
+Pour démarrer cron automatiquement, ajouter dans `/etc/wsl.conf`:
+```ini
+[boot]
+command = service cron start
+```
+
+**Note:** WSL2 s'arrête après ~8 secondes d'inactivité. Pour que les tâches cron tournent en permanence:
+- Garder un terminal WSL ouvert
+- Ou utiliser le Task Scheduler Windows pour lancer `wsl -e /chemin/vers/manage.sh run`
+
 ## Exemple de règle
 
 Supprimer tous les messages de plus de 3 jours contenant "Host Up" dans le sujet:
