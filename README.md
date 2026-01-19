@@ -11,10 +11,11 @@ Bot automatisé pour nettoyer les emails Gmail selon des règles personnalisées
 - Condition d'âge (ex: emails de plus de 3 jours)
 - Pagination automatique (traite jusqu'à 500 messages par règle)
 - TUI (Terminal User Interface) pour gérer les règles
+- Filtrage des règles en temps réel (vim-like avec `/`)
 - Modal d'exécution avec logs en temps réel (sujet, expéditeur, date)
 - Indicateur visuel du mode dry-run
 - Suivi de la dernière exécution de chaque règle
-- Logs de toutes les actions effectuées
+- Logs de toutes les actions effectuées avec rotation automatique
 - Mode dry-run pour tester sans modifier
 
 ## Installation
@@ -181,3 +182,22 @@ gmail-cleaner/
 | DRY_RUN | Mode simulation | false |
 | MAX_SEARCH_RESULTS | Messages max par règle | 500 |
 | PYTHON_PATH | Chemin vers Python | (auto-détecté) |
+
+## Rotation des logs
+
+La rotation des logs est gérée automatiquement par l'application (pas besoin de `logrotate`).
+
+**Fonctionnement :**
+- Quand `cleaner.log` atteint la taille max (`LOG_MAX_SIZE`) → renommé en `cleaner.log.1`
+- Les anciens backups sont décalés (`.1` → `.2` → `.3`)
+- Le plus ancien est supprimé quand le nombre dépasse `LOG_BACKUP_COUNT`
+- Un nouveau `cleaner.log` vide est créé
+
+**Exemple avec les valeurs par défaut :**
+```
+logs/
+├── cleaner.log       # Fichier actif (max 5 MB)
+├── cleaner.log.1     # Backup le plus récent
+├── cleaner.log.2     # Backup intermédiaire
+└── cleaner.log.3     # Backup le plus ancien (supprimé à la prochaine rotation)
+```
