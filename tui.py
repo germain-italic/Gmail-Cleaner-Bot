@@ -632,6 +632,8 @@ class GmailCleanerApp(App):
                 self._refresh_rules()
                 self._refresh_stats()
                 self.notify("Rule created")
+            # Refocus rules table after modal closes
+            self.query_one("#rules-table", DataTable).focus()
 
         self.push_screen(RuleFormScreen(), handle_result)
 
@@ -652,6 +654,8 @@ class GmailCleanerApp(App):
                 self._refresh_rules()
                 self._refresh_stats()
                 self.notify("Rule updated")
+            # Refocus rules table after modal closes
+            self.query_one("#rules-table", DataTable).focus()
 
         self.push_screen(RuleFormScreen(rule), handle_result)
 
@@ -675,6 +679,8 @@ class GmailCleanerApp(App):
                 self._refresh_rules()
                 self._refresh_stats()
                 self.notify("Rule deleted")
+            # Refocus rules table after modal closes
+            self.query_one("#rules-table", DataTable).focus()
 
         self.push_screen(ConfirmScreen("Delete this rule?"), handle_confirm)
 
@@ -694,6 +700,9 @@ class GmailCleanerApp(App):
         def handle_confirm(confirmed: bool) -> None:
             if confirmed:
                 self._execute_all_rules()
+            else:
+                # Refocus rules table if user cancels
+                self.query_one("#rules-table", DataTable).focus()
 
         self.push_screen(ConfirmScreen(message), handle_confirm)
 
@@ -708,6 +717,8 @@ class GmailCleanerApp(App):
             self._refresh_rules()
             self._refresh_logs()
             self._refresh_stats()
+            # Refocus rules table after log screen closes
+            self.query_one("#rules-table", DataTable).focus()
 
         def run_in_thread():
             def thread_safe_log(msg, level="info"):
@@ -744,6 +755,9 @@ class GmailCleanerApp(App):
         def handle_confirm(confirmed: bool) -> None:
             if confirmed:
                 self._execute_rule(rule)
+            else:
+                # Refocus rules table if user cancels
+                self.query_one("#rules-table", DataTable).focus()
 
         self.push_screen(ConfirmScreen(message), handle_confirm)
 
@@ -758,6 +772,8 @@ class GmailCleanerApp(App):
             self._refresh_rules()
             self._refresh_logs()
             self._refresh_stats()
+            # Refocus rules table after log screen closes
+            self.query_one("#rules-table", DataTable).focus()
 
         def run_in_thread():
             def thread_safe_log(msg, level="info"):
