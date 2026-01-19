@@ -683,6 +683,22 @@ class GmailCleanerApp(App):
             self.notify("Not connected to Gmail", severity="error")
             return
 
+        rules = self.db.get_rules(enabled_only=True)
+        if not rules:
+            self.notify("No active rules to run", severity="warning")
+            return
+
+        mode = "DRY RUN" if self.dry_run else "LIVE"
+        message = f"Run all {len(rules)} active rules?\nMode: {mode}"
+
+        def handle_confirm(confirmed: bool) -> None:
+            if confirmed:
+                self._execute_all_rules()
+
+        self.push_screen(ConfirmScreen(message), handle_confirm)
+
+    def _execute_all_rules(self) -> None:
+        """Execute all active rules (called after confirmation)."""
         import src.config
         src.config.DRY_RUN = self.dry_run
 
@@ -722,6 +738,17 @@ class GmailCleanerApp(App):
             self.notify("Rule not found", severity="error")
             return
 
+        mode = "DRY RUN" if self.dry_run else "LIVE"
+        message = f"Run rule '{rule.name}'?\nAction: {rule.action.value}\nMode: {mode}"
+
+        def handle_confirm(confirmed: bool) -> None:
+            if confirmed:
+                self._execute_rule(rule)
+
+        self.push_screen(ConfirmScreen(message), handle_confirm)
+
+    def _execute_rule(self, rule: Rule) -> None:
+        """Execute a single rule (called after confirmation)."""
         import src.config
         src.config.DRY_RUN = self.dry_run
 
