@@ -5,10 +5,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_PATH="$SCRIPT_DIR/venv"
 PYTHON="$VENV_PATH/bin/python"
 
+# Load PYTHON_PATH from .env if exists
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    PYTHON_PATH=$(grep -E "^PYTHON_PATH=" "$SCRIPT_DIR/.env" | cut -d'=' -f2)
+fi
+
+# Determine system Python: .env > alt-python311 > python3
+if [ -n "$PYTHON_PATH" ] && [ -x "$PYTHON_PATH" ]; then
+    SYSTEM_PYTHON="$PYTHON_PATH"
+elif [ -x "/opt/alt/python311/bin/python3" ]; then
+    SYSTEM_PYTHON="/opt/alt/python311/bin/python3"
+else
+    SYSTEM_PYTHON="python3"
+fi
+
 # Check if venv exists
 if [ ! -f "$PYTHON" ]; then
-    echo "Virtual environment not found. Creating..."
-    python3 -m venv "$VENV_PATH"
+    echo "Virtual environment not found. Creating with $SYSTEM_PYTHON..."
+    "$SYSTEM_PYTHON" -m venv "$VENV_PATH"
     "$PYTHON" -m pip install -q -r "$SCRIPT_DIR/requirements.txt"
     echo "Done."
 fi
