@@ -82,28 +82,46 @@ class GmailClient:
     def search_messages(
         self,
         query: str = "",
-        max_results: int = 100,
-        older_than_days: Optional[int] = None
+        max_results: int = 500,
+        older_than_days: Optional[int] = None,
+        on_progress: Optional[callable] = None
     ) -> list[EmailMessage]:
-        """Search for messages matching the query."""
+        """Search for messages matching the query with pagination."""
         if older_than_days:
             date_threshold = (datetime.now() - timedelta(days=older_than_days)).strftime("%Y/%m/%d")
             query = f"{query} before:{date_threshold}".strip()
 
         messages = []
+        page_token = None
+
         try:
-            result = self.service.users().messages().list(
-                userId="me",
-                q=query,
-                maxResults=max_results
-            ).execute()
+            while True:
+                # Fetch page of message IDs (max 100 per page)
+                request = self.service.users().messages().list(
+                    userId="me",
+                    q=query,
+                    maxResults=min(100, max_results - len(messages)),
+                    pageToken=page_token
+                )
+                result = request.execute()
 
-            message_ids = result.get("messages", [])
+                message_ids = result.get("messages", [])
 
-            for msg_ref in message_ids:
-                msg = self.get_message(msg_ref["id"])
-                if msg:
-                    messages.append(msg)
+                for msg_ref in message_ids:
+                    msg = self.get_message(msg_ref["id"])
+                    if msg:
+                        messages.append(msg)
+                        if on_progress:
+                            on_progress(len(messages))
+
+                    # Stop if we've reached max_results
+                    if len(messages) >= max_results:
+                        return messages
+
+                # Check for next page
+                page_token = result.get("nextPageToken")
+                if not page_token:
+                    break
 
         except HttpError as e:
             raise Exception(f"Gmail API error: {e}")
