@@ -431,6 +431,19 @@ class GmailCleanerApp(App):
         background: orange;
         text-style: bold;
     }
+
+    #filter-bar {
+        dock: top;
+        height: 1;
+        background: $primary;
+        color: $text;
+        text-align: center;
+        display: none;
+    }
+
+    #filter-bar.active {
+        display: block;
+    }
     """
 
     BINDINGS = [
@@ -440,6 +453,7 @@ class GmailCleanerApp(App):
         Binding("s", "run_selected_rule", "Run Selected"),
         Binding("t", "test_connection", "Test Connection"),
         Binding("d", "toggle_dry_run", "Toggle Dry Run"),
+        Binding("escape", "clear_filter", "Clear Filter", show=False),
     ]
 
     def __init__(self):
@@ -447,11 +461,14 @@ class GmailCleanerApp(App):
         self.db = Database()
         self.gmail = None
         self.dry_run = DRY_RUN
+        self.filter_text = ""
+        self.all_rules: list[Rule] = []
 
     def compose(self) -> ComposeResult:
         yield Header()
         yield Static("Connecting...", id="connection-status", classes="connection-status")
         yield Static("Mode: LIVE", id="dry-indicator", classes="dry-indicator")
+        yield Static("", id="filter-bar")
 
         with TabbedContent():
             with TabPane("Rules", id="rules-tab"):
@@ -515,11 +532,26 @@ class GmailCleanerApp(App):
     def _refresh_stats(self) -> None:
         self._update_dry_indicator()
 
-    def _refresh_rules(self) -> None:
+    def _refresh_rules(self, keep_filter: bool = False) -> None:
+        if not keep_filter:
+            self.all_rules = self.db.get_rules()
+
         table = self.query_one("#rules-table", DataTable)
         table.clear()
 
-        for rule in self.db.get_rules():
+        # Filter rules if filter_text is set
+        rules = self.all_rules
+        if self.filter_text:
+            filter_lower = self.filter_text.lower()
+            rules = [r for r in self.all_rules if (
+                filter_lower in r.name.lower() or
+                filter_lower in r.value.lower() or
+                filter_lower in r.field.value.lower() or
+                filter_lower in r.operator.value.lower() or
+                filter_lower in r.action.value.lower()
+            )]
+
+        for rule in rules:
             status_text = Text("ON", style="green") if rule.enabled else Text("OFF", style="red")
             last_run = rule.last_run_at.strftime("%m-%d %H:%M") if rule.last_run_at else "Never"
             table.add_row(
@@ -721,6 +753,49 @@ class GmailCleanerApp(App):
         self._refresh_logs()
         self._refresh_stats()
         self.notify(f"Cleared {count} old log entries")
+
+    def _update_filter_bar(self) -> None:
+        """Update the filter bar display."""
+        filter_bar = self.query_one("#filter-bar", Static)
+        if self.filter_text:
+            filter_bar.update(f"Filter: {self.filter_text}_ (Esc to clear)")
+            filter_bar.add_class("active")
+        else:
+            filter_bar.update("")
+            filter_bar.remove_class("active")
+
+    def action_clear_filter(self) -> None:
+        """Clear the filter text."""
+        if self.filter_text:
+            self.filter_text = ""
+            self._update_filter_bar()
+            self._refresh_rules(keep_filter=True)
+
+    def on_key(self, event) -> None:
+        """Handle key presses for live filtering."""
+        # Only filter when rules table is focused
+        rules_table = self.query_one("#rules-table", DataTable)
+        if not rules_table.has_focus:
+            return
+
+        # Handle backspace
+        if event.key == "backspace":
+            if self.filter_text:
+                self.filter_text = self.filter_text[:-1]
+                self._update_filter_bar()
+                self._refresh_rules(keep_filter=True)
+                event.prevent_default()
+            return
+
+        # Handle printable characters (excluding special keys and shortcuts)
+        if event.is_printable and event.character:
+            # Skip if it's a bound key without filter active
+            if not self.filter_text and event.character in "qnasstd":
+                return
+            self.filter_text += event.character
+            self._update_filter_bar()
+            self._refresh_rules(keep_filter=True)
+            event.prevent_default()
 
 
 def main():
