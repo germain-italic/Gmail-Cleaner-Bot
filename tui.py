@@ -20,7 +20,7 @@ from textual.binding import Binding
 from rich.text import Text
 
 from src.config import validate_config, DRY_RUN
-from src.database import Database, Rule, RuleField, RuleOperator, RuleAction
+from src.database import Database, Rule, RuleField, RuleOperator, RuleAction, DuplicateRuleNameError
 from src.gmail_client import GmailClient
 from src.rules_engine import RulesEngine
 
@@ -628,10 +628,13 @@ class GmailCleanerApp(App):
     def action_new_rule(self) -> None:
         def handle_result(rule: Rule | None) -> None:
             if rule:
-                self.db.create_rule(rule)
-                self._refresh_rules()
-                self._refresh_stats()
-                self.notify("Rule created")
+                try:
+                    self.db.create_rule(rule)
+                    self._refresh_rules()
+                    self._refresh_stats()
+                    self.notify("Rule created")
+                except DuplicateRuleNameError:
+                    self.notify(f"A rule named '{rule.name}' already exists", severity="error")
             # Refocus rules table after modal closes
             self.query_one("#rules-table", DataTable).focus()
 
@@ -650,10 +653,13 @@ class GmailCleanerApp(App):
         def handle_result(updated: Rule | None) -> None:
             if updated:
                 updated.id = rule_id
-                self.db.update_rule(updated)
-                self._refresh_rules()
-                self._refresh_stats()
-                self.notify("Rule updated")
+                try:
+                    self.db.update_rule(updated)
+                    self._refresh_rules()
+                    self._refresh_stats()
+                    self.notify("Rule updated")
+                except DuplicateRuleNameError:
+                    self.notify(f"A rule named '{updated.name}' already exists", severity="error")
             # Refocus rules table after modal closes
             self.query_one("#rules-table", DataTable).focus()
 

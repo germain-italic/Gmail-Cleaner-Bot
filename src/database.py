@@ -11,6 +11,14 @@ from contextlib import contextmanager
 from .config import DATABASE_PATH
 
 
+class DuplicateRuleNameError(Exception):
+    """Raised when attempting to create/update a rule with a name that already exists."""
+
+    def __init__(self, name: str):
+        self.name = name
+        super().__init__(f"A rule with the name '{name}' already exists")
+
+
 class RuleAction(Enum):
     DELETE = "delete"
     ARCHIVE = "archive"
@@ -166,27 +174,32 @@ class Database:
     # Rule operations
     def create_rule(self, rule: Rule) -> int:
         now = datetime.now().isoformat()
-        with self._connect() as conn:
-            cursor = conn.execute(
-                """
-                INSERT INTO rules (name, field, operator, value, action, action_param,
-                                   older_than_days, enabled, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    rule.name,
-                    rule.field.value,
-                    rule.operator.value,
-                    rule.value,
-                    rule.action.value,
-                    rule.action_param,
-                    rule.older_than_days,
-                    int(rule.enabled),
-                    now,
-                    now,
-                ),
-            )
-            return cursor.lastrowid
+        try:
+            with self._connect() as conn:
+                cursor = conn.execute(
+                    """
+                    INSERT INTO rules (name, field, operator, value, action, action_param,
+                                       older_than_days, enabled, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        rule.name,
+                        rule.field.value,
+                        rule.operator.value,
+                        rule.value,
+                        rule.action.value,
+                        rule.action_param,
+                        rule.older_than_days,
+                        int(rule.enabled),
+                        now,
+                        now,
+                    ),
+                )
+                return cursor.lastrowid
+        except sqlite3.IntegrityError as e:
+            if "UNIQUE constraint failed: rules.name" in str(e):
+                raise DuplicateRuleNameError(rule.name) from e
+            raise
 
     def get_rules(self, enabled_only: bool = False) -> list[Rule]:
         query = "SELECT * FROM rules"
@@ -206,27 +219,32 @@ class Database:
 
     def update_rule(self, rule: Rule) -> bool:
         now = datetime.now().isoformat()
-        with self._connect() as conn:
-            cursor = conn.execute(
-                """
-                UPDATE rules SET name=?, field=?, operator=?, value=?, action=?,
-                                 action_param=?, older_than_days=?, enabled=?, updated_at=?
-                WHERE id = ?
-                """,
-                (
-                    rule.name,
-                    rule.field.value,
-                    rule.operator.value,
-                    rule.value,
-                    rule.action.value,
-                    rule.action_param,
-                    rule.older_than_days,
-                    int(rule.enabled),
-                    now,
-                    rule.id,
-                ),
-            )
-            return cursor.rowcount > 0
+        try:
+            with self._connect() as conn:
+                cursor = conn.execute(
+                    """
+                    UPDATE rules SET name=?, field=?, operator=?, value=?, action=?,
+                                     action_param=?, older_than_days=?, enabled=?, updated_at=?
+                    WHERE id = ?
+                    """,
+                    (
+                        rule.name,
+                        rule.field.value,
+                        rule.operator.value,
+                        rule.value,
+                        rule.action.value,
+                        rule.action_param,
+                        rule.older_than_days,
+                        int(rule.enabled),
+                        now,
+                        rule.id,
+                    ),
+                )
+                return cursor.rowcount > 0
+        except sqlite3.IntegrityError as e:
+            if "UNIQUE constraint failed: rules.name" in str(e):
+                raise DuplicateRuleNameError(rule.name) from e
+            raise
 
     def delete_rule(self, rule_id: int) -> bool:
         with self._connect() as conn:
