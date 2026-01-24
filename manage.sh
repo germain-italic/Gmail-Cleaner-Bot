@@ -52,6 +52,9 @@ case "$1" in
             exit 1
         fi
         echo "Deploying to $DEPLOY_SSH_HOST via Plesk Git..."
+        echo "  Fetching from remote..."
+        ssh "$DEPLOY_SSH_HOST" "plesk ext git --fetch -domain $DEPLOY_PLESK_DOMAIN -name $DEPLOY_PLESK_REPO"
+        echo "  Deploying files..."
         ssh "$DEPLOY_SSH_HOST" "plesk ext git --deploy -domain $DEPLOY_PLESK_DOMAIN -name $DEPLOY_PLESK_REPO"
         echo "Done."
         ;;
