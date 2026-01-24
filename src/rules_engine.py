@@ -176,12 +176,22 @@ class RulesEngine:
 
         query = " ".join(query_parts)
 
+        # Progress callback for search
+        last_logged = [0]  # Use list to allow modification in nested function
+        def on_search_progress(count):
+            if count - last_logged[0] >= 100:
+                self._log(f"Fetching messages... {count} retrieved")
+                last_logged[0] = count
+
         # Get messages with timeout handling
+        self._log(f"Searching with query: {query}")
         try:
             messages = self.gmail.search_messages(
                 query=query,
-                older_than_days=rule.older_than_days if rule.older_than_days > 0 else None
+                older_than_days=rule.older_than_days if rule.older_than_days > 0 else None,
+                on_progress=on_search_progress
             )
+            self._log(f"Found {len(messages)} messages to process")
         except (TimeoutError, Exception) as e:
             self._log(f"Error searching messages for rule '{rule.name}': {e}", "error")
             return stats
