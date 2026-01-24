@@ -16,7 +16,11 @@ Bot automatisé pour nettoyer les emails Gmail selon des règles personnalisées
 - Indicateur visuel du mode dry-run
 - Suivi de la dernière exécution de chaque règle
 - Logs de toutes les actions effectuées avec rotation automatique
+- Logs de progression pendant la recherche (affiche le nombre de messages récupérés)
 - Mode dry-run pour tester sans modifier
+- Exclusion configurable des dossiers (Corbeille, Spam, Brouillons, Envoyés)
+- Rate limiting automatique de l'API (40 appels/sec pour respecter les quotas Google)
+- Durée d'exécution affichée en fin de traitement et dans le rapport email
 
 ## Installation
 
@@ -87,6 +91,9 @@ L'indicateur jaune "DRY MODE" s'affiche en haut quand le mode simulation est act
 
 # Installer/mettre à jour les dépendances
 ./manage.sh install
+
+# Déployer sur le serveur de production (via Plesk Git)
+./manage.sh deploy
 ```
 
 ### Déploiement serveur (prod)
@@ -207,8 +214,14 @@ gmail-cleaner/
 | LOG_MAX_SIZE | Taille max du log avant rotation (octets) | 5242880 (5 MB) |
 | LOG_BACKUP_COUNT | Nombre de fichiers de backup | 3 |
 | DRY_RUN | Mode simulation | false |
-| MAX_SEARCH_RESULTS | Messages max par règle | 500 |
+| MAX_SEARCH_RESULTS | Messages max par règle (voir limites API ci-dessous) | 500 |
 | PYTHON_PATH | Chemin vers Python | (auto-détecté) |
+| **Exclusion de dossiers** | | |
+| EXCLUDE_TRASH | Exclure la corbeille de la recherche | false |
+| EXCLUDE_SPAM | Exclure le spam de la recherche | false |
+| EXCLUDE_DRAFTS | Exclure les brouillons de la recherche | false |
+| EXCLUDE_SENT | Exclure les envoyés de la recherche | false |
+| **Rapport email** | | |
 | SMTP_ENABLED | Activer l'envoi de rapport par email | false |
 | SMTP_HOST | Serveur SMTP | (requis si SMTP_ENABLED) |
 | SMTP_PORT | Port SMTP | 587 |
@@ -217,6 +230,10 @@ gmail-cleaner/
 | SMTP_FROM | Adresse expéditeur | (requis si SMTP_ENABLED) |
 | SMTP_TO | Adresse destinataire | (requis si SMTP_ENABLED) |
 | SMTP_TLS | Utiliser STARTTLS | true |
+| **Déploiement** | | |
+| DEPLOY_SSH_HOST | Alias SSH du serveur de production | (requis pour deploy) |
+| DEPLOY_PLESK_DOMAIN | Domaine Plesk | (requis pour deploy) |
+| DEPLOY_PLESK_REPO | Nom du repo Git dans Plesk | (requis pour deploy) |
 
 ## Rapport par email
 
@@ -232,6 +249,7 @@ Quand `SMTP_ENABLED=true`, un rapport est envoyé par email après l'exécution 
 
 **Contenu du rapport :**
 - Date et mode d'exécution (LIVE/DRY RUN)
+- Durée d'exécution
 - Nombre de règles traitées
 - Messages trouvés, actions réussies/échouées
 
@@ -257,3 +275,21 @@ logs/
 ├── cleaner.log.2     # Backup intermédiaire
 └── cleaner.log.3     # Backup le plus ancien (supprimé à la prochaine rotation)
 ```
+
+## Limites de l'API Gmail
+
+L'application intègre un rate limiting automatique (40 appels/sec) pour respecter les quotas Google Workspace.
+
+| Limite | Valeur |
+|--------|--------|
+| Quota par projet | 1,200,000 units/min |
+| Quota par utilisateur | 15,000 units/min |
+| messages.list | 5 units |
+| messages.get | 5 units |
+| messages.trash | 5 units |
+| messages.delete | 10 units |
+| **Capacité effective** | **~1000-1500 emails/min** |
+
+Avec `MAX_SEARCH_RESULTS=500` (défaut), chaque règle peut traiter jusqu'à 500 messages. Pour des dossiers volumineux, cette valeur peut être augmentée.
+
+**Référence :** [Gmail API Usage Limits](https://developers.google.com/workspace/gmail/api/reference/quota)
