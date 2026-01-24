@@ -2,6 +2,7 @@
 
 import base64
 import re
+import time
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from typing import Optional
@@ -12,6 +13,10 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from .config import GOOGLE_CREDENTIALS_PATH, GMAIL_USER_EMAIL, GMAIL_SCOPES, MAX_SEARCH_RESULTS
+
+# Rate limiting: 15,000 quota units/min, ~5 units per call = 3000 calls/min = 50/sec
+# Be conservative: 40 calls/sec = 0.025s between calls
+API_RATE_LIMIT_DELAY = 0.025
 
 
 @dataclass
@@ -38,6 +43,14 @@ class GmailClient:
     def __init__(self, user_email: str = GMAIL_USER_EMAIL):
         self.user_email = user_email
         self._service = None
+        self._last_api_call = 0
+
+    def _rate_limit(self):
+        """Enforce rate limiting between API calls."""
+        elapsed = time.time() - self._last_api_call
+        if elapsed < API_RATE_LIMIT_DELAY:
+            time.sleep(API_RATE_LIMIT_DELAY - elapsed)
+        self._last_api_call = time.time()
 
     @property
     def service(self):
@@ -97,6 +110,7 @@ class GmailClient:
         try:
             while True:
                 # Fetch page of message IDs (max 100 per page)
+                self._rate_limit()
                 request = self.service.users().messages().list(
                     userId="me",
                     q=query,
@@ -131,6 +145,7 @@ class GmailClient:
     def get_message(self, message_id: str) -> Optional[EmailMessage]:
         """Get a single message by ID."""
         try:
+            self._rate_limit()
             msg = self.service.users().messages().get(
                 userId="me",
                 id=message_id,
@@ -158,6 +173,7 @@ class GmailClient:
     def delete_message(self, message_id: str, permanent: bool = False) -> bool:
         """Delete a message (move to trash or permanent delete)."""
         try:
+            self._rate_limit()
             if permanent:
                 self.service.users().messages().delete(
                     userId="me", id=message_id
@@ -173,6 +189,7 @@ class GmailClient:
     def archive_message(self, message_id: str) -> bool:
         """Archive a message (remove INBOX label)."""
         try:
+            self._rate_limit()
             self.service.users().messages().modify(
                 userId="me",
                 id=message_id,
@@ -185,6 +202,7 @@ class GmailClient:
     def mark_as_read(self, message_id: str) -> bool:
         """Mark a message as read."""
         try:
+            self._rate_limit()
             self.service.users().messages().modify(
                 userId="me",
                 id=message_id,
@@ -197,6 +215,7 @@ class GmailClient:
     def add_label(self, message_id: str, label_id: str) -> bool:
         """Add a label to a message."""
         try:
+            self._rate_limit()
             self.service.users().messages().modify(
                 userId="me",
                 id=message_id,
@@ -209,6 +228,7 @@ class GmailClient:
     def get_labels(self) -> list[dict]:
         """Get all labels."""
         try:
+            self._rate_limit()
             result = self.service.users().labels().list(userId="me").execute()
             return result.get("labels", [])
         except HttpError:
@@ -222,6 +242,7 @@ class GmailClient:
                 return label["id"]
 
         try:
+            self._rate_limit()
             result = self.service.users().labels().create(
                 userId="me",
                 body={
