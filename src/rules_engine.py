@@ -8,7 +8,10 @@ from typing import Optional
 
 from .database import Database, Rule, LogEntry, RuleField, RuleOperator, RuleAction
 from .gmail_client import GmailClient, EmailMessage
-from .config import DRY_RUN, LOG_PATH, LOG_LEVEL, LOG_MAX_SIZE, LOG_BACKUP_COUNT
+from .config import (
+    DRY_RUN, LOG_PATH, LOG_LEVEL, LOG_MAX_SIZE, LOG_BACKUP_COUNT,
+    EXCLUDE_TRASH, EXCLUDE_SPAM, EXCLUDE_DRAFTS, EXCLUDE_SENT
+)
 
 # Setup logging with rotation (file only, no stdout to avoid TUI conflicts)
 logger = logging.getLogger(__name__)
@@ -150,6 +153,16 @@ class RulesEngine:
                 query_parts.append(f'label:"{label_value}"')
             else:
                 query_parts.append(f"label:{label_value}")
+
+        # Add folder exclusions
+        if EXCLUDE_TRASH:
+            query_parts.append("-in:trash")
+        if EXCLUDE_SPAM:
+            query_parts.append("-in:spam")
+        if EXCLUDE_DRAFTS:
+            query_parts.append("-in:drafts")
+        if EXCLUDE_SENT:
+            query_parts.append("-in:sent")
 
         query = " ".join(query_parts)
 

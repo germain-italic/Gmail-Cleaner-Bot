@@ -29,6 +29,12 @@ DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 
 MAX_SEARCH_RESULTS = int(os.getenv("MAX_SEARCH_RESULTS", "500"))
 
+# Folder exclusions
+EXCLUDE_TRASH = os.getenv("EXCLUDE_TRASH", "false").lower() == "true"
+EXCLUDE_SPAM = os.getenv("EXCLUDE_SPAM", "false").lower() == "true"
+EXCLUDE_DRAFTS = os.getenv("EXCLUDE_DRAFTS", "false").lower() == "true"
+EXCLUDE_SENT = os.getenv("EXCLUDE_SENT", "false").lower() == "true"
+
 # SMTP settings for email reports
 SMTP_ENABLED = os.getenv("SMTP_ENABLED", "false").lower() == "true"
 SMTP_HOST = os.getenv("SMTP_HOST", "")
