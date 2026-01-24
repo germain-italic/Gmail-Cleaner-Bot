@@ -11,13 +11,14 @@ from .config import (
 )
 
 
-def send_report(stats: dict, rule_details: list[dict] = None, duration: str = None) -> bool:
+def send_report(stats: dict, rule_details: list[dict] = None, duration: str = None, logs: list[str] = None) -> bool:
     """Send execution report via email.
 
     Args:
         stats: Dictionary with keys: rules_processed, matched, success, failed
         rule_details: Optional list of per-rule stats
         duration: Optional execution duration string (e.g., "2m 30s")
+        logs: Optional list of execution log lines
 
     Returns:
         True if email sent successfully, False otherwise
@@ -63,6 +64,14 @@ def send_report(stats: dict, rule_details: list[dict] = None, duration: str = No
         ])
         for rule in rule_details:
             body_lines.append(f"  {rule['name']}: {rule['matched']} message(s), {rule['success']} OK, {rule['failed']} KO")
+
+    if logs:
+        body_lines.extend([
+            f"",
+            f"Log d'exécution:",
+            f"----------------",
+        ])
+        body_lines.extend(logs)
 
     body_lines.extend([
         f"",

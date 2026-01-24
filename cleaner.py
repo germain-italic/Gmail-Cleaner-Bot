@@ -54,9 +54,14 @@ def main():
         src.config.DRY_RUN = True
         print("Running in DRY RUN mode - no changes will be made")
 
-    # Run the cleaner
+    # Run the cleaner with log capture
     start_time = time.time()
-    engine = RulesEngine(db, gmail)
+    execution_logs = []
+
+    def capture_log(message: str, level: str = "info"):
+        execution_logs.append(message)
+
+    engine = RulesEngine(db, gmail, on_log=capture_log)
     stats = engine.run_all_rules()
     duration_seconds = time.time() - start_time
 
@@ -79,7 +84,7 @@ def main():
     print(f"  Duration: {duration_str}")
 
     # Send email report
-    if send_report(stats, duration=duration_str):
+    if send_report(stats, duration=duration_str, logs=execution_logs):
         print("  Email report sent")
 
 
