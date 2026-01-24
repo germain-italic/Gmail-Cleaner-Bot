@@ -115,16 +115,13 @@ def send_report(stats: dict, rule_details: list[dict] = None, duration: str = No
         # Header
         '<h1 style="color: #333; margin: 0 0 20px 0; font-size: 24px; border-bottom: 2px solid #007bff; padding-bottom: 10px;">Gmail Cleaner Bot</h1>',
 
-        # Info bar
-        f'<div style="display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;">',
-        f'<div><strong>Date:</strong> {now}</div>',
-        f'<div><strong>Mode:</strong> <span style="color: {mode_color}; font-weight: bold;">{mode}</span></div>',
+        # Info bar (using table for email client compatibility)
+        f'<table style="margin-bottom: 20px;"><tr>',
+        f'<td style="padding-right: 30px;"><strong>Date:</strong> {now}</td>',
+        f'<td style="padding-right: 30px;"><strong>Mode:</strong> <span style="color: {mode_color}; font-weight: bold;">{mode}</span></td>',
+        f'<td><strong>Durée:</strong> {duration}</td>' if duration else '',
+        f'</tr></table>',
     ]
-
-    if duration:
-        html_parts.append(f'<div><strong>Durée:</strong> {duration}</div>')
-
-    html_parts.append('</div>')
 
     # Summary table
     success_color = "#28a745" if stats['success'] > 0 else "#6c757d"
