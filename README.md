@@ -102,8 +102,6 @@ cleangmail test   # Test connexion Gmail
 
 **Cron configuré :** tous les jours à 4h00
 
-**Fichiers :** `/var/www/vhosts/gmail-cleaner-bot.example.com/httpdocs/`
-
 ### Configuration Cron
 
 ```bash
