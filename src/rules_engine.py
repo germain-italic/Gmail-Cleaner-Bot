@@ -94,8 +94,9 @@ class RulesEngine:
 
     def execute_action(self, message: EmailMessage, rule: Rule) -> tuple[bool, Optional[str]]:
         """Execute the rule action on a message."""
+        labels_str = ", ".join(message.labels) if message.labels else "no labels"
         if DRY_RUN:
-            self._log(f"[DRY RUN] Would {rule.action.value} message: {message.subject}")
+            self._log(f"[DRY RUN] Would {rule.action.value} message: [{message.subject}] in [{labels_str}]")
             return True, None
 
         try:
@@ -118,7 +119,7 @@ class RulesEngine:
             if success:
                 date_str = message.date.strftime("%Y-%m-%d")
                 self._log(
-                    f"Action '{rule.action.value}' on: [{message.subject}] from [{message.sender}] ({date_str})"
+                    f"Action '{rule.action.value}' on: [{message.subject}] from [{message.sender}] ({date_str}) in [{labels_str}]"
                 )
                 return True, None
             else:
