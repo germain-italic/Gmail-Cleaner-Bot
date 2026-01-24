@@ -31,6 +31,14 @@ class RulesEngine:
         self.gmail = gmail
         self.on_log = on_log
         self.is_cancelled = is_cancelled
+        self._labels_cache = None
+
+    def _get_label_names(self, label_ids: list[str]) -> list[str]:
+        """Convert label IDs to human-readable names."""
+        if self._labels_cache is None:
+            labels = self.gmail.get_labels()
+            self._labels_cache = {label["id"]: label["name"] for label in labels}
+        return [self._labels_cache.get(lid, lid) for lid in label_ids]
 
     def _log(self, message: str, level: str = "info"):
         """Log message to file and optional callback."""
@@ -94,7 +102,8 @@ class RulesEngine:
 
     def execute_action(self, message: EmailMessage, rule: Rule) -> tuple[bool, Optional[str]]:
         """Execute the rule action on a message."""
-        labels_str = ", ".join(message.labels) if message.labels else "no labels"
+        label_names = self._get_label_names(message.labels) if message.labels else []
+        labels_str = ", ".join(label_names) if label_names else "no labels"
         if DRY_RUN:
             self._log(f"[DRY RUN] Would {rule.action.value} message: [{message.subject}] in [{labels_str}]")
             return True, None
