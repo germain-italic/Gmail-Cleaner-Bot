@@ -11,12 +11,13 @@ from .config import (
 )
 
 
-def send_report(stats: dict, rule_details: list[dict] = None) -> bool:
+def send_report(stats: dict, rule_details: list[dict] = None, duration: str = None) -> bool:
     """Send execution report via email.
 
     Args:
         stats: Dictionary with keys: rules_processed, matched, success, failed
         rule_details: Optional list of per-rule stats
+        duration: Optional execution duration string (e.g., "2m 30s")
 
     Returns:
         True if email sent successfully, False otherwise
@@ -44,6 +45,7 @@ def send_report(stats: dict, rule_details: list[dict] = None) -> bool:
         f"",
         f"Date: {now}",
         f"Mode: {mode}",
+        f"Durée: {duration}" if duration else None,
         f"",
         f"Résumé:",
         f"  - Règles traitées: {stats['rules_processed']}",
@@ -51,6 +53,7 @@ def send_report(stats: dict, rule_details: list[dict] = None) -> bool:
         f"  - Actions réussies: {stats['success']}",
         f"  - Actions échouées: {stats['failed']}",
     ]
+    body_lines = [line for line in body_lines if line is not None]
 
     if rule_details:
         body_lines.extend([

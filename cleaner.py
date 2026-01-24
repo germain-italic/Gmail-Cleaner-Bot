@@ -3,6 +3,7 @@
 
 import sys
 import argparse
+import time
 from pathlib import Path
 
 # Add src to path
@@ -54,8 +55,20 @@ def main():
         print("Running in DRY RUN mode - no changes will be made")
 
     # Run the cleaner
+    start_time = time.time()
     engine = RulesEngine(db, gmail)
     stats = engine.run_all_rules()
+    duration_seconds = time.time() - start_time
+
+    # Format duration
+    minutes, seconds = divmod(int(duration_seconds), 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours > 0:
+        duration_str = f"{hours}h {minutes}m {seconds}s"
+    elif minutes > 0:
+        duration_str = f"{minutes}m {seconds}s"
+    else:
+        duration_str = f"{seconds}s"
 
     # Print summary
     print(f"\nCleanup Summary:")
@@ -63,9 +76,10 @@ def main():
     print(f"  Messages matched: {stats['matched']}")
     print(f"  Actions successful: {stats['success']}")
     print(f"  Actions failed: {stats['failed']}")
+    print(f"  Duration: {duration_str}")
 
     # Send email report
-    if send_report(stats):
+    if send_report(stats, duration=duration_str):
         print("  Email report sent")
 
 
