@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from typing import Optional
 from email.utils import parsedate_to_datetime
+from email.header import decode_header, make_header
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -65,8 +66,24 @@ class GmailClient:
     def _get_header(self, headers: list[dict], name: str) -> str:
         for header in headers:
             if header["name"].lower() == name.lower():
-                return header["value"]
+                return self._decode_mime_header(header["value"])
         return ""
+
+    @staticmethod
+    def _decode_mime_header(value: str) -> str:
+        """Decode an RFC 2047 encoded-word header (e.g. "=?utf-8?Q?...?=").
+
+        The Gmail API returns header values raw, so a subject like
+        "=?utf-8?Q?Active=20Backup=20for=20Business?=" would otherwise be matched
+        with "=20" instead of spaces and "=C3=A9" instead of "é" — breaking every
+        rule against a non-ASCII / fully Q-encoded subject or sender.
+        """
+        if not value or "=?" not in value:
+            return value
+        try:
+            return str(make_header(decode_header(value)))
+        except Exception:
+            return value
 
     def _parse_date(self, date_str: str) -> datetime:
         try:
