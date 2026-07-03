@@ -81,6 +81,7 @@ pip install -r requirements.txt
 Raccourcis clavier:
 - `/` - Filtrer les règles (vim-like: taper le texte, Enter pour confirmer, Escape pour effacer)
 - `n` - Nouvelle règle
+- `g` - Générer des suggestions de règles (scan du compte, voir ci-dessous)
 - `a` - Exécuter toutes les règles actives
 - `s` - Exécuter la règle sélectionnée
 - `t` - Tester la connexion Gmail
@@ -88,6 +89,30 @@ Raccourcis clavier:
 - `q` - Quitter
 
 L'indicateur jaune "DRY MODE" s'affiche en haut quand le mode simulation est actif.
+
+### Générateur de règles (Suggestions)
+
+Touche `g` (ou bouton **Suggest**) dans la TUI. Le bot scanne les messages récents
+(6 derniers mois par défaut), repère les **motifs qui reviennent souvent** et pour
+lesquels **aucune règle n'existe encore**, puis propose des règles de suppression
+prêtes à créer — classées par nombre d'occurrences.
+
+Regroupement sur deux axes :
+- **Expéditeur** : adresses `From` fréquentes → règle `from contains <adresse>`.
+- **Sujet** : phrases de sujet récurrentes (normalisées : `[tags]`, chiffres, dates et
+  hostnames variables sont ignorés) → règle `subject contains <phrase>`. La phrase
+  proposée est le plus long segment **littéral commun** au groupe, donc le `contains`
+  matche bien tous les messages concernés.
+
+Dans l'écran de suggestions :
+- `c` (ou **Create**) : créer la règle sélectionnée.
+- `a` (ou **Create All**) : créer toutes les suggestions listées.
+- `Esc` : fermer.
+
+Les suggestions déjà couvertes par une règle active (ou en doublon exact) sont
+**automatiquement écartées**. Rien n'est créé sans votre action — vous validez chaque
+règle. ⚠️ Une suggestion par **expéditeur** peut être large (ex. votre propre adresse si
+des services vous écrivent depuis votre domaine) : vérifiez avant de créer.
 
 ### Script en ligne de commande
 

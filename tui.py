@@ -371,6 +371,170 @@ class RunLogScreen(ModalScreen[dict]):
             self.dismiss(self.stats)
 
 
+class SuggestScreen(ModalScreen[bool]):
+    """Scan the mailbox and suggest deletion rules for recurring, uncovered mail.
+
+    Dismisses True if at least one rule was created (so the caller refreshes).
+    """
+
+    BINDINGS = [
+        Binding("escape", "close", "Close"),
+        Binding("c", "create_selected", "Create"),
+        Binding("a", "create_all", "Create All"),
+    ]
+
+    CSS = """
+    SuggestScreen { align: center middle; }
+    #suggest-container {
+        width: 92%; height: 85%;
+        background: $surface; border: thick $primary; padding: 1;
+    }
+    #suggest-title {
+        dock: top; height: 1; background: $primary; color: $text; text-align: center;
+    }
+    #suggest-status { dock: top; height: 1; text-align: center; }
+    #suggest-table { height: 1fr; margin: 1 0; }
+    #suggest-buttons { dock: bottom; height: 3; align: center middle; }
+    #suggest-buttons Button { margin: 0 1; }
+    """
+
+    def __init__(self, gmail, db, months: int = 6, max_messages: int = 3000,
+                 min_count: int = 5, older_than_days: int = 3):
+        super().__init__()
+        self.gmail = gmail
+        self.db = db
+        self.months = months
+        self.max_messages = max_messages
+        self.min_count = min_count
+        self.older_than_days = older_than_days
+        self.suggestions: list = []
+        self.created: set[int] = set()
+        self.any_created = False
+        self.scanning = True
+
+    def compose(self) -> ComposeResult:
+        with Container(id="suggest-container"):
+            yield Static("Rule Suggestions", id="suggest-title")
+            yield Static("Scanning mailbox…", id="suggest-status")
+            yield DataTable(id="suggest-table")
+            with Horizontal(id="suggest-buttons"):
+                yield Button("Create (c)", variant="primary", id="create")
+                yield Button("Create All (a)", variant="success", id="create-all")
+                yield Button("Close", variant="default", id="close")
+
+    def on_mount(self) -> None:
+        table = self.query_one("#suggest-table", DataTable)
+        table.add_columns("#", "Type", "Match value", "Count", "Older", "Sample subject")
+        table.cursor_type = "row"
+        self.call_after_refresh(self._start_scan)
+
+    def _start_scan(self) -> None:
+        self.run_worker(self._scan_worker, thread=True)
+
+    def _scan_worker(self) -> None:
+        from src import suggester
+
+        def progress(n):
+            self.app.call_from_thread(self._set_status, f"Scanning mailbox… {n} messages read")
+
+        try:
+            existing = self.db.get_rules()
+            sugs = suggester.generate_suggestions(
+                self.gmail, existing,
+                months=self.months, max_messages=self.max_messages,
+                min_count=self.min_count, older_than_days=self.older_than_days,
+                on_progress=progress,
+            )
+        except Exception as e:  # noqa: BLE001 - surface any API/scan error in the UI
+            self.app.call_from_thread(self._set_status, f"Scan error: {e}")
+            self.app.call_from_thread(self._finish_scan)
+            return
+        self.app.call_from_thread(self._populate, sugs)
+        self.app.call_from_thread(self._finish_scan)
+
+    def _finish_scan(self) -> None:
+        self.scanning = False
+
+    def _set_status(self, text: str) -> None:
+        self.query_one("#suggest-status", Static).update(text)
+
+    def _populate(self, suggestions: list) -> None:
+        self.suggestions = suggestions
+        table = self.query_one("#suggest-table", DataTable)
+        table.clear()
+        if not suggestions:
+            self._set_status("No new suggestions — every recurring sender/subject is already covered.")
+            return
+        self._set_status(
+            f"{len(suggestions)} suggestion(s) — select a row, 'c' to create it, 'a' for all, Esc to close."
+        )
+        for i, s in enumerate(suggestions):
+            table.add_row(
+                str(i + 1),
+                s.dimension,
+                (s.value[:50] + "…") if len(s.value) > 50 else s.value,
+                str(s.count),
+                str(s.older_than_days),
+                (s.sample_subject[:45] + "…") if len(s.sample_subject) > 45 else s.sample_subject,
+            )
+        table.focus()
+
+    def _create_one(self, idx: int) -> bool:
+        if idx in self.created or idx < 0 or idx >= len(self.suggestions):
+            return False
+        s = self.suggestions[idx]
+        self.created.add(idx)
+        try:
+            self.db.create_rule(s.to_rule())
+            self.any_created = True
+            return True
+        except DuplicateRuleNameError:
+            self.notify(f"Already exists: {s.suggested_name()}", severity="warning")
+            return False
+
+    def _mark(self, table: DataTable, row: int) -> None:
+        try:
+            table.update_cell_at((row, 0), Text("✓", style="green"))
+        except Exception:
+            pass
+
+    def action_create_selected(self) -> None:
+        if self.scanning or not self.suggestions:
+            return
+        table = self.query_one("#suggest-table", DataTable)
+        idx = table.cursor_row
+        if idx is None:
+            return
+        if idx in self.created:
+            self.notify("Already handled", severity="warning")
+            return
+        if self._create_one(idx):
+            self._mark(table, idx)
+            self.notify(f"Rule created: {self.suggestions[idx].suggested_name()}")
+
+    def action_create_all(self) -> None:
+        if self.scanning or not self.suggestions:
+            return
+        table = self.query_one("#suggest-table", DataTable)
+        n = 0
+        for idx in range(len(self.suggestions)):
+            if idx not in self.created and self._create_one(idx):
+                n += 1
+                self._mark(table, idx)
+        self.notify(f"{n} rule(s) created")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "create":
+            self.action_create_selected()
+        elif event.button.id == "create-all":
+            self.action_create_all()
+        elif event.button.id == "close":
+            self.action_close()
+
+    def action_close(self) -> None:
+        self.dismiss(self.any_created)
+
+
 class GmailCleanerApp(App):
     """Main TUI Application."""
 
@@ -463,6 +627,7 @@ class GmailCleanerApp(App):
     BINDINGS = [
         Binding("q", "quit", "Quit"),
         Binding("n", "new_rule", "New Rule"),
+        Binding("g", "suggest_rules", "Suggest"),
         Binding("a", "run_all_rules", "Run All"),
         Binding("s", "run_selected_rule", "Run Selected"),
         Binding("t", "test_connection", "Test Connection"),
@@ -491,6 +656,7 @@ class GmailCleanerApp(App):
                 yield DataTable(id="rules-table")
                 with Horizontal(id="action-bar"):
                     yield Button("New Rule", variant="primary", id="btn-new")
+                    yield Button("Suggest", variant="primary", id="btn-suggest")
                     yield Button("Edit", variant="default", id="btn-edit")
                     yield Button("Toggle", variant="default", id="btn-toggle")
                     yield Button("Delete", variant="error", id="btn-delete")
@@ -610,6 +776,8 @@ class GmailCleanerApp(App):
 
         if button_id == "btn-new":
             self.action_new_rule()
+        elif button_id == "btn-suggest":
+            self.action_suggest_rules()
         elif button_id == "btn-edit":
             self._edit_rule()
         elif button_id == "btn-toggle":
@@ -639,6 +807,20 @@ class GmailCleanerApp(App):
             self.query_one("#rules-table", DataTable).focus()
 
         self.push_screen(RuleFormScreen(), handle_result)
+
+    def action_suggest_rules(self) -> None:
+        if not self.gmail:
+            self.notify("Not connected to Gmail", severity="error")
+            return
+
+        def handle_result(created: bool | None) -> None:
+            if created:
+                self._refresh_rules()
+                self._refresh_stats()
+                self.notify("Rules list updated")
+            self.query_one("#rules-table", DataTable).focus()
+
+        self.push_screen(SuggestScreen(self.gmail, self.db), handle_result)
 
     def _edit_rule(self) -> None:
         rule_id = self._get_selected_rule_id()
