@@ -226,7 +226,7 @@ Supprimer tous les messages avec le label "Notifications" de plus de 30 jours:
 | Action | delete |
 | Older than days | 30 |
 
-**Note:** Utiliser le nom du label tel qu'il apparaît dans Gmail (ex: "Transaid - Feraid") ou le slug technique (ex: "transaid---feraid"). Les deux formats fonctionnent.
+**Note:** Utiliser le nom du label tel qu'il apparaît dans Gmail (ex: "Ma Catégorie - Sous-label") ou le slug technique (ex: "ma-categorie---sous-label"). Les deux formats fonctionnent.
 
 ## Structure du projet
 
