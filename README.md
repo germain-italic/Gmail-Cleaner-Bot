@@ -22,6 +22,13 @@ Bot automatisé pour nettoyer les emails Gmail selon des règles personnalisées
 - Rate limiting automatique de l'API (40 appels/sec pour respecter les quotas Google)
 - Durée d'exécution affichée en fin de traitement et dans le rapport email
 
+## Prérequis
+
+- **Python ≥ 3.10.** Le code utilise la syntaxe d'union PEP 604 (`X | None`)
+  évaluée à l'exécution ; sur Python 3.9 ou antérieur, la TUI plante au démarrage
+  (`TypeError: unsupported operand type(s) for |`).
+- Un compte de service Google Workspace avec Domain-Wide Delegation (voir plus bas).
+
 ## Installation
 
 ```bash
@@ -29,9 +36,14 @@ Bot automatisé pour nettoyer les emails Gmail selon des règles personnalisées
 cp .env.example .env
 # Éditer .env avec vos paramètres
 
-# Lancer (le venv sera créé automatiquement)
+# Lancer (le venv est créé automatiquement)
 ./manage.sh
 ```
+
+`manage.sh` crée le venv au premier lancement et le **reconstruit automatiquement**
+s'il est cassé (interpréteur supprimé/déplacé → symlink `venv/bin/python` mort) ou
+trop ancien (< 3.10). Si aucun Python ≥ 3.10 n'est trouvé, il s'arrête avec une
+erreur explicite plutôt que de bâtir un environnement à moitié fonctionnel.
 
 Ou manuellement:
 
@@ -115,12 +127,19 @@ cleangmail test   # Test connexion Gmail
 # Éditer le crontab
 crontab -e
 
-# Exécuter tous les jours à 4h
-0 4 * * * /chemin/vers/manage.sh run >> /chemin/vers/logs/cron.log 2>&1
-
-# Ou toutes les heures
-0 * * * * /chemin/vers/manage.sh run >> /chemin/vers/logs/cron.log 2>&1
+# Tous les jours à 4h — alerte email UNIQUEMENT si le run échoue (via chronic)
+MAILTO="vous@example.com"
+0 4 * * * /usr/bin/chronic /chemin/vers/manage.sh run
 ```
+
+> **Alertes email :** `chronic` (paquet `moreutils`) bufferise la sortie et ne la
+> laisse passer — donc `cron` envoie un mail à `MAILTO` — **qu'en cas d'échec**
+> (code retour ≠ 0). En cas de succès, tout est masqué : pas de mail quotidien inutile.
+>
+> ⚠️ Éviter `... run >> logs/cron.log 2>&1` : rediriger toute la sortie vers un
+> fichier prive `cron` de sortie à envoyer, donc **aucun mail ne part, même en cas
+> d'erreur** (une panne peut passer inaperçue longtemps). L'application écrit de
+> toute façon son propre `logs/cleaner.log`.
 
 ### Cron sur WSL2
 
