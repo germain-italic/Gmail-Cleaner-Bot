@@ -239,7 +239,7 @@ gmail-cleaner/
 | EXCLUDE_TRASH | Exclure la corbeille de la recherche | false |
 | EXCLUDE_SPAM | Exclure le spam de la recherche | false |
 | EXCLUDE_DRAFTS | Exclure les brouillons de la recherche | false |
-| EXCLUDE_SENT | Exclure les envoyés de la recherche | false |
+| EXCLUDE_SENT | Exclure les envoyés de la recherche (⚠️ voir note ci-dessous) | false |
 | **Rapport email** | | |
 | SMTP_ENABLED | Activer l'envoi de rapport par email | false |
 | SMTP_HOST | Serveur SMTP | (requis si SMTP_ENABLED) |
@@ -253,6 +253,27 @@ gmail-cleaner/
 | DEPLOY_SSH_HOST | Alias SSH du serveur de production | (requis pour deploy) |
 | DEPLOY_PLESK_DOMAIN | Domaine Plesk | (requis pour deploy) |
 | DEPLOY_PLESK_REPO | Nom du repo Git dans Plesk | (requis pour deploy) |
+
+### ⚠️ EXCLUDE_SENT et messages auto-adressés
+
+Gmail applique le label `SENT` selon l'en-tête **`From:`**, pas selon le transport.
+Un message dont le `From:` est **votre propre adresse** est classé `SENT` **même s'il
+vous est livré** (il porte alors à la fois `INBOX` et `SENT`) — et **même s'il a été
+émis par un service tiers** (NAS, monitoring, backup…) ou relayé par un provider
+(Mandrill, SES, SendGrid…). Seul compte le fait que le `From:` = votre adresse.
+
+Conséquence : avec `EXCLUDE_SENT=true`, la requête ajoute `-in:sent` et **toutes ces
+notifications auto-adressées sont ignorées par les règles**, alors qu'elles sont bien
+dans la boîte de réception.
+
+- Si vous voulez que les règles **traitent** ces messages (ex. purger des alertes de
+  sauvegarde/monitoring envoyées depuis votre propre domaine) → laissez
+  `EXCLUDE_SENT=false` (défaut).
+- Ne passez `EXCLUDE_SENT=true` que si vous tenez à **préserver** tout ce qui porte le
+  label `SENT`, en acceptant d'exclure aussi ce type de mail auto-adressé.
+
+Symptôme typique : une règle affiche `Found N messages` mais `0 matched`, ou ne trouve
+qu'une poignée de messages alors que la boîte en contient beaucoup plus.
 
 ## Rapport par email
 
