@@ -6,9 +6,10 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 
+from . import config  # read config.DRY_RUN live (flipped at runtime by cleaner.py/tui.py)
 from .config import (
     SMTP_ENABLED, SMTP_HOST, SMTP_PORT, SMTP_USER,
-    SMTP_PASSWORD, SMTP_FROM, SMTP_TO, SMTP_TLS, DRY_RUN
+    SMTP_PASSWORD, SMTP_FROM, SMTP_TO, SMTP_TLS
 )
 
 
@@ -95,8 +96,8 @@ def send_report(stats: dict, rule_details: list[dict] = None, duration: str = No
 
     # Build email content
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    mode = "DRY RUN" if DRY_RUN else "LIVE"
-    mode_color = "#fd7e14" if DRY_RUN else "#28a745"
+    mode = "DRY RUN" if config.DRY_RUN else "LIVE"
+    mode_color = "#fd7e14" if config.DRY_RUN else "#28a745"
 
     subject = f"[Gmail Cleaner] Rapport du {now}"
     if stats['matched'] == 0:

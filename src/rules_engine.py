@@ -8,8 +8,14 @@ from typing import Optional
 
 from .database import Database, Rule, LogEntry, RuleField, RuleOperator, RuleAction
 from .gmail_client import GmailClient, EmailMessage
+# Import the config module (not the DRY_RUN value): cleaner.py / tui.py flip
+# `config.DRY_RUN` at runtime, so we must read the attribute live. A plain
+# `from .config import DRY_RUN` would bind the value once at import time and
+# never see the CLI/TUI override — which silently turned every dry-run into a
+# real run.
+from . import config
 from .config import (
-    DRY_RUN, LOG_PATH, LOG_LEVEL, LOG_MAX_SIZE, LOG_BACKUP_COUNT,
+    LOG_PATH, LOG_LEVEL, LOG_MAX_SIZE, LOG_BACKUP_COUNT,
     EXCLUDE_TRASH, EXCLUDE_SPAM, EXCLUDE_DRAFTS, EXCLUDE_SENT
 )
 
@@ -104,7 +110,7 @@ class RulesEngine:
         """Execute the rule action on a message."""
         label_names = self._get_label_names(message.labels) if message.labels else []
         labels_str = ", ".join(label_names) if label_names else "no labels"
-        if DRY_RUN:
+        if config.DRY_RUN:
             self._log(f"[DRY RUN] Would {rule.action.value} message: [{message.subject}] in [{labels_str}]")
             return True, None
 
